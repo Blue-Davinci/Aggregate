@@ -131,6 +131,7 @@ func (m RSSFeedDataModel) CreateRssFeedPost(rssFeed *RSSFeed, feedID *uuid.UUID)
 	for _, item := range rssFeed.Channel.Item {
 		// We use dateparse to parse a variety of possible date/time data rather than using
 		// the time.Parse() function which is more strict.
+		// We use ParseAny()
 		publishedAt, err := dateparse.ParseAny(item.PubDate)
 		if err != nil {
 			continue
