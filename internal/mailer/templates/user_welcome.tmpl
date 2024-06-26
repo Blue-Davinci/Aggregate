@@ -1,0 +1,156 @@
+{{define "subject"}}Welcome to Aggregate!{{ end }}
+{{define "plainBody"}}
+Hi, Thanks for signing up for a Aggregate account. We're excited to have you on
+board! For future reference, your user ID number is {{.userID}}. Please send a
+request to the `PUT /v1/users/activated` endpoint with the following JSON body
+to activate your account: {"token": "{{.activationToken}}"} Or use the following
+to activate your account:
+{{.activationURL}}
+Please note that this is a one-time use token and it will expire in 3 days.
+Thanks, The Aggregate Team
+{{ end }}
+{{define "htmlBody"}}
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="referrer" content="origin">
+    <style>
+      .title {
+        text-align: center;
+        padding: 20px;
+        background-color: #555;
+        color: #f0f0f0;
+      }
+      .title img {
+        height: 50px;
+        vertical-align: middle;
+      }
+      .title h2 {
+        display: inline;
+        margin: 0;
+      }
+      hr {
+        border: 0;
+        height: 1px;
+        background: #999;
+        margin: 20px 0;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #f0f0f0;
+        background-color: hwb(0 16% 83%);
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #121212;
+        border-radius: 5px;
+      }
+      .button {
+        display: inline-block;
+        padding: 15px 30px;
+        margin: 20px 0;
+        color: #444;
+        background-color: #f0f0f0;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+      }
+      .button:hover {
+        background-color: #ddd;
+        box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.2);
+        transform: translateY(-3px);
+      }
+      .button:active {
+        transform: translateY(-1px);
+        box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
+      }
+      a {
+        color: #f0f0f0;
+      }
+      .footer {
+        background-color: #333; /* Darker footer background */
+        color: #fff; /* Light text color for contrast */
+        text-align: center; /* Center the content */
+        padding: 10px 0; /* Smaller height with padding */
+        font-size: 0.8rem; /* Smaller text */
+        text-align: center;
+        font-size: 0.8em;
+        color: hsl(0, 0%, 50%);
+        padding: 1px 0;
+      }
+      .footer img {
+        height: 24px;
+        width: 24px;
+        margin: 0 10px;
+      }
+      a {
+        display: inline-block;
+        margin-right: -4px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="title">
+        <img src="https://i.ibb.co/xszwyDJ/favicon.png" alt="Aggregate Logo" />
+        <h2>Welcome to Aggregate!</h2>
+      </div>
+      <hr />
+      <p>Hello,</p>
+      <p>
+        Thanks for signing up for a Aggregate account. We're excited to have you on
+        board!
+      </p>
+      <p>
+        For future reference, your user ID number is <strong>{{.userID}}</strong
+        >.
+      </p>
+      <p>
+        Please send a request to the
+        <code>PUT /v1/users/activated</code> endpoint with the following JSON
+        body to activate your account:
+      </p>
+      <pre><code>
+        {"token": "{{.activationToken}}"}
+        </code></pre>
+      <p>Or use the following to activate your account:</p>
+      <a href="{{.activationURL}}" class="button">Activate Account</a>
+      <p>
+        Please note that this is a <strong>one-time</strong> use token and it
+        will expire in <strong>3 days.</strong>
+      </p>
+      <p>Thanks,</p>
+      <p>The Aggregate Team</p>
+      <!----------------------- Footer ----------------------------------->
+      <div class="footer">
+        <p>The Aggregate Project, 6969 Street</p>
+        <p>
+          Powered by
+          <a href="https://golang.org/" target="_blank" style="color: #007bff">
+            Golang</a
+          >
+        </p>
+        <a href="https://twitter.com/" target="_blank">
+          <img
+            src="https://img.icons8.com/?size=100&id=rQfEoE6vlrLk&format=png&color=FFFFFF"
+            alt="Twitter"
+          /> </a
+        ><a href="https://facebook.com/" target="_blank">
+          <img
+            src="https://img.icons8.com/?size=100&id=8818&format=png&color=FFFFFF"
+            alt="Facebook"
+          />
+        </a>
+      </div>
+    </div>
+  </body>
+</html>
+{{ end }}
