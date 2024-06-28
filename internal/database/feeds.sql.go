@@ -13,19 +13,21 @@ import (
 )
 
 const createFeed = `-- name: CreateFeed :one
-INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url) 
-VALUES ($1, $2, $3, $4, $5, $6, $7) 
-RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at
+INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description
 `
 
 type CreateFeedParams struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Name      string
-	Url       string
-	UserID    int64
-	ImgUrl    string
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	UserID          int64
+	ImgUrl          string
+	FeedType        string
+	FeedDescription string
 }
 
 func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
@@ -37,6 +39,8 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		arg.Url,
 		arg.UserID,
 		arg.ImgUrl,
+		arg.FeedType,
+		arg.FeedDescription,
 	)
 	var i Feed
 	err := row.Scan(
@@ -49,6 +53,8 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		&i.UserID,
 		&i.ImgUrl,
 		&i.LastFetchedAt,
+		&i.FeedType,
+		&i.FeedDescription,
 	)
 	return i, err
 }
@@ -103,7 +109,7 @@ func (q *Queries) DeleteFeedFollow(ctx context.Context, arg DeleteFeedFollowPara
 }
 
 const getAllFeeds = `-- name: GetAllFeeds :many
-SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url
+SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description
 FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
 AND ($2 = '' OR url LIKE '%' || $2 || '%')
@@ -119,15 +125,17 @@ type GetAllFeedsParams struct {
 }
 
 type GetAllFeedsRow struct {
-	Count     int64
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Name      string
-	Url       string
-	UserID    int64
-	Version   int32
-	ImgUrl    string
+	Count           int64
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	UserID          int64
+	Version         int32
+	ImgUrl          string
+	FeedType        string
+	FeedDescription string
 }
 
 func (q *Queries) GetAllFeeds(ctx context.Context, arg GetAllFeedsParams) ([]GetAllFeedsRow, error) {
@@ -154,6 +162,8 @@ func (q *Queries) GetAllFeeds(ctx context.Context, arg GetAllFeedsParams) ([]Get
 			&i.UserID,
 			&i.Version,
 			&i.ImgUrl,
+			&i.FeedType,
+			&i.FeedDescription,
 		); err != nil {
 			return nil, err
 		}
@@ -222,7 +232,7 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 }
 
 const getNextFeedsToFetch = `-- name: GetNextFeedsToFetch :many
-SELECT id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at FROM feeds
+SELECT id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description FROM feeds
 ORDER BY last_fetched_at ASC NULLS FIRST
 LIMIT $1
 `
@@ -246,6 +256,8 @@ func (q *Queries) GetNextFeedsToFetch(ctx context.Context, limit int32) ([]Feed,
 			&i.UserID,
 			&i.ImgUrl,
 			&i.LastFetchedAt,
+			&i.FeedType,
+			&i.FeedDescription,
 		); err != nil {
 			return nil, err
 		}
@@ -264,7 +276,7 @@ const markFeedAsFetched = `-- name: MarkFeedAsFetched :one
 UPDATE feeds
 SET last_fetched_at = NOW(), updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at
+RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description
 `
 
 func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, error) {
@@ -280,6 +292,8 @@ func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, er
 		&i.UserID,
 		&i.ImgUrl,
 		&i.LastFetchedAt,
+		&i.FeedType,
+		&i.FeedDescription,
 	)
 	return i, err
 }

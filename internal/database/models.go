@@ -19,15 +19,17 @@ type ApiKey struct {
 }
 
 type Feed struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Name          string
-	Url           string
-	Version       int32
-	UserID        int64
-	ImgUrl        string
-	LastFetchedAt sql.NullTime
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	Version         int32
+	UserID          int64
+	ImgUrl          string
+	LastFetchedAt   sql.NullTime
+	FeedType        string
+	FeedDescription string
 }
 
 type FeedFollow struct {

@@ -23,7 +23,7 @@ const (
 	// Context timeout
 	ResponseContextTimeout = 30 * time.Second
 	// Default Image Url
-	DefaultImageURL = "https://rss.com/blog/wp-content/uploads/2019/10/social_style_3_rss-512-1.png"
+	DefaultImageURL = "https://images.pexels.com/photos/17300603/pexels-photo-17300603/free-photo-of-a-little-girl-running-in-a-park-next-to-a-man-making-a-large-soap-bubble.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
 )
 
 var (

@@ -20,14 +20,16 @@ type FeedModel struct {
 	DB *database.Queries
 }
 type Feed struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
-	Url       string    `json:"url"`
-	Version   int32     `json:"version"`
-	UserID    int64     `json:"user_id"`
-	ImgURL    string    `json:"img_url"`
+	ID              uuid.UUID `json:"id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	Name            string    `json:"name"`
+	Url             string    `json:"url"`
+	Version         int32     `json:"version"`
+	UserID          int64     `json:"user_id"`
+	ImgURL          string    `json:"img_url"`
+	FeedType        string    `json:"feed_type"`
+	FeedDescription string    `json:"feed_description"`
 }
 type FeedFollow struct {
 	ID        uuid.UUID `json:"id"`
@@ -38,12 +40,21 @@ type FeedFollow struct {
 }
 
 func ValidateFeed(v *validator.Validator, feed *Feed) {
+	//feed name
 	v.Check(feed.Name != "", "name", "must be provided")
 	v.Check(len(feed.Name) <= 500, "name", "must not be more than 500 bytes long")
+	// feed url
 	v.Check(feed.Url != "", "url", "must be provided")
 	v.Check(validateUrl(feed.Url), "url", "must be a valid URL")
+	// feed image
 	v.Check(feed.ImgURL != "", "Image", "url must be provided")
 	v.Check(validateUrl(feed.ImgURL), "Image", "must have a valid URL")
+	// feed type
+	v.Check(feed.FeedType != "", "feed type", "must be provided")
+	v.Check(len(feed.FeedType) <= 500, "feed type", "must not be more than 500 bytes long")
+	// feed description
+	v.Check(feed.FeedDescription != "", "feed description", "must be provided")
+	v.Check(len(feed.FeedDescription) <= 500, "feed description", "must not be more than 500 bytes long")
 }
 func ValidateFeedFollow(v *validator.Validator, feedfollow *FeedFollow) {
 	_, isvalid := ValidateUUID(feedfollow.ID.String())
@@ -57,13 +68,15 @@ func (m FeedModel) Insert(feed *Feed) error {
 	defer cancel()
 	// version will default to 1
 	queryresult, err := m.DB.CreateFeed(ctx, database.CreateFeedParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Name:      feed.Name,
-		Url:       feed.Url,
-		UserID:    feed.UserID,
-		ImgUrl:    feed.ImgURL,
+		ID:              uuid.New(),
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		Name:            feed.Name,
+		Url:             feed.Url,
+		UserID:          feed.UserID,
+		ImgUrl:          feed.ImgURL,
+		FeedType:        feed.FeedType,
+		FeedDescription: feed.FeedDescription,
 	})
 	// set our details into the feed struct
 	feed.ID = queryresult.ID
@@ -106,6 +119,8 @@ func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Fee
 		feed.Version = row.Version
 		feed.UserID = row.UserID
 		feed.ImgURL = row.ImgUrl
+		feed.FeedType = row.FeedType
+		feed.FeedDescription = row.FeedDescription
 		feeds = append(feeds, &feed)
 	}
 	// Generate a Metadata struct, passing in the total record count and pagination

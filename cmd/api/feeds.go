@@ -12,9 +12,11 @@ import (
 func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body to get the feed data
 	var input struct {
-		Name   string `json:"name"`
-		Url    string `json:"url"`
-		ImgURL string `json:"img_url"`
+		Name            string `json:"name"`
+		Url             string `json:"url"`
+		ImgURL          string `json:"img_url"`
+		FeedType        string `json:"feed_type"`
+		FeedDescription string `json:"feed_description"`
 	}
 	//Read our data into the input struct
 	err := app.readJSON(w, r, &input)
@@ -26,10 +28,12 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 	// Create a new Feed record in the database while using contextGetUser
 	// To pass down the user information to the feed model
 	feed := &data.Feed{
-		Name:   input.Name,
-		Url:    input.Url,
-		ImgURL: input.ImgURL,
-		UserID: app.contextGetUser(r).ID,
+		Name:            input.Name,
+		Url:             input.Url,
+		ImgURL:          input.ImgURL,
+		FeedType:        input.FeedType,
+		FeedDescription: input.FeedDescription,
+		UserID:          app.contextGetUser(r).ID,
 	}
 	// Initialize a new Validator.
 	v := validator.New()
