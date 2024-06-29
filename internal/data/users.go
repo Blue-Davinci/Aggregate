@@ -177,7 +177,12 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 	defer cancel()
 	queryresult, err := m.DB.GetUserByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
 	}
 	userPassword := password{
 		hash: queryresult.PasswordHash,

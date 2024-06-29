@@ -33,7 +33,7 @@ func (app *application) createAuthenticationApiKeyHandler(w http.ResponseWriter,
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
-			app.failedValidationResponse(w, r, v.Errors)
+			app.invalidCredentialsResponse(w, r)
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
