@@ -32,9 +32,11 @@ func (app *application) createAuthenticationApiKeyHandler(w http.ResponseWriter,
 	user, err := app.models.Users.GetByEmail(input.Email)
 	if err != nil {
 		switch {
+		// if the user is not found, we return an invalid credentials response
 		case errors.Is(err, data.ErrRecordNotFound):
 			app.invalidCredentialsResponse(w, r)
 		default:
+			// otherwsie return a 500 internal server error
 			app.serverErrorResponse(w, r, err)
 		}
 		return
