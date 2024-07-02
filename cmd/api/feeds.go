@@ -24,6 +24,9 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 		app.badRequestResponse(w, r, err)
 		return
 	}
+	app.logger.PrintInfo("Creating a new feed...", map[string]string{
+		"input": input.Name,
+	})
 
 	// Create a new Feed record in the database while using contextGetUser
 	// To pass down the user information to the feed model
@@ -41,10 +44,19 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
+	app.logger.PrintInfo("Inserting new feed...", map[string]string{
+		"input": input.Name,
+	})
 	// Call the Insert() method on the feedModel to insert the feed record into the database.
 	err = app.models.Feeds.Insert(feed)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrDuplicateFeed):
+			v.AddError("name", "a feed with this name already exists")
+			app.failedConstraintValidation(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 

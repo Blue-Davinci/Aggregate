@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	ErrDuplicateFeed   = errors.New("duplicate feed")
 	ErrDuplicateFollow = errors.New("duplicate follow")
 )
 
@@ -78,6 +79,16 @@ func (m FeedModel) Insert(feed *Feed) error {
 		FeedType:        feed.FeedType,
 		FeedDescription: feed.FeedDescription,
 	})
+	// check for an error
+
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "feeds_url_key"`:
+			return ErrDuplicateFeed
+		default:
+			return err
+		}
+	}
 	// set our details into the feed struct
 	feed.ID = queryresult.ID
 	feed.CreatedAt = queryresult.CreatedAt
