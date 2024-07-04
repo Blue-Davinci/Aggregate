@@ -160,6 +160,17 @@ Alternatively, in unix systems you can make a .envrc file and load it directly i
 include .envrc
 ```
 
+A succesful run will output:
+```bash
+make run/api
+'Running cmd/api...'
+go run ./cmd/api
+{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"Loading Environment Variables","properties":{"DSN":"cmd\\api\\.env"}}
+{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"database connection pool established"}
+{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"Starting RSS Feed Scraper","properties":{"Client Timeout":"15","Interval":"40s","No of Go Routines":"5","No of Retries":"3"}}
+{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"starting server","properties":{"addr":":4000","env":"development"}}
+```
+
 ## 🔧 Running the tests <a name = "tests"></a>
 
 Explain how to run the automated tests for this system.
