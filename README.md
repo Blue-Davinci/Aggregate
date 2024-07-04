@@ -180,7 +180,7 @@ Below are all the end points for the API and a high level description of what th
 
 3. **PUT /v1/users/activated:** Activates a user.
 
-4. **POST /v1/tokens/authentication:** Creates an authentication token.
+4. **POST /v1/api/authentication:** Creates an authentication token.
 
 5. **GET /debug/vars:** Provides debug variables from the `expvar` package. 
 
@@ -203,47 +203,78 @@ Below are all the end points for the API and a high level description of what th
 
 ## 🔧 Running the tests <a name = "tests"></a>
 
-Explain how to run the automated tests for this system.
+The project has existing tests represented by files ending with the word `"_test"` e.g `rssdata_test.go`
 
 ### Break down into end to end tests
 
-Explain what these tests test and why
+Each test file contains a myriad of tests to run on various entities mainly functions.
+The test files are organized into `structs of tests` and their corresponding test logic.
 
+You can run them directly from the vscode test UI. Below represents test results for the scraper:
 ```
-Give an example
+=== RUN   Test_application_rssFeedScraper
+=== RUN   Test_application_rssFeedScraper/Test1
+Fetching:  bbc
+--- PASS: Test_application_rssFeedScraper/Test1 (0.00s)
+=== RUN   Test_application_rssFeedScraper/Test2
+Fetching:  Lane's
+--- PASS: Test_application_rssFeedScraper/Test2 (0.00s)
+=== RUN   Test_application_rssFeedScraper/Test3
+Fetching:  Megaphone
+--- PASS: Test_application_rssFeedScraper/Test3 (0.00s)
+=== RUN   Test_application_rssFeedScraper/Test4
+Fetching:  Daily Podcast
+--- PASS: Test_application_rssFeedScraper/Test4 (0.00s)
+=== RUN   Test_application_rssFeedScraper/Test5
+Fetching:  Endagadget
+--- PASS: Test_application_rssFeedScraper/Test5 (0.00s)
+--- PASS: Test_application_rssFeedScraper (0.00s)
+PASS
+ok      github.com/blue-davinci/aggregate/cmd/api       0.874s
 ```
+- <b>All other tests follow a similar prologue.</b>
 
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
+<hr />
 
 ## 🎈 Usage <a name="usage"></a>
+As earlier mentioned, the api uses a myriad of flags which you can use to launch the application.
+An example of launching the application with your `smtp server's setting` includes:
+```bash
+make build/api ## build api using the makefile
+./bin/api.exe -smtp-username=pigbearman -smtp-password=algor ## run the built api with your own values
 
-Add notes about how to use the system.
+Direct Run: 
+go run main.go
+```
 
 ## 🚀 Deployment <a name = "deployment"></a>
 
-Add additional notes about how to deploy this on a live system.
+This application can be deployed using Docker and Docker Compose. Here are the steps to do so:
+<strong>[TO BE ADDED]</strong>
+
+<hr />
 
 ## ⛏️ Built Using <a name = "built_using"></a>
-
-- [MongoDB](https://www.mongodb.com/) - Database
-- [Express](https://expressjs.com/) - Server Framework
-- [VueJs](https://vuejs.org/) - Web Framework
-- [NodeJs](https://nodejs.org/en/) - Server Environment
+- [PostgreSQL](https://www.postgresql.org/) - Database
+- [Go](https://golang.org/) - Backend
+- [HTML](https://developer.mozilla.org/en-US/docs/Web/HTML) - Email Template
+- [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) - Frontend behavior
 
 ## ✍️ Authors <a name = "authors"></a>
 
-- [@kylelobo](https://github.com/kylelobo) - Idea & Initial work
+- [@blue-davinci](https://github.com/blue-davinci) - Idea & Initial work
 
-See also the list of [contributors](https://github.com/kylelobo/The-Documentation-Compendium/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/blue-davinci/aggregate/contributors) who participated in this project.
+
+<hr />
 
 ## 🎉 Acknowledgements <a name = "acknowledgement"></a>
 
 - Hat tip to anyone whose code was used
+
 - Inspiration
-- References
+
+## 📚 References <a name = "references"></a>
+
+- [Go Documentation](https://golang.org/doc/): Official Go documentation and tutorials.
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/): Official PostgreSQL documentation.
