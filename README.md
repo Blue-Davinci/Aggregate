@@ -171,6 +171,36 @@ go run ./cmd/api
 {"level":"INFO","time":"2024-07-04T15:56:16Z","message":"starting server","properties":{"addr":":4000","env":"development"}}
 ```
 
+<hr />
+### API Endpoints <a name = "endpoints"></a>
+Below are all the end points for the API and a high level description of what they do.
+
+1. **GET /v1/healthcheck:** Checks the health of the application. Returns a 200 OK status code if the application is running correctly.
+2. **POST /v1/users:** Registers a new user.
+
+3. **PUT /v1/users/activated:** Activates a user.
+
+4. **POST /v1/tokens/authentication:** Creates an authentication token.
+
+5. **GET /debug/vars:** Provides debug variables from the `expvar` package. 
+
+6. **POST /feeds:** Add an RSS Type feed {Atom/RSS}
+
+7. **GET /feeds?page=1&page_size=30:** Get all Feeds in the DB, <b>With Pagination</b>
+    <b>Note:</b> <i>You can leave the pagination parameters foe default values!</i>
+
+8. **POST /feeds/follows:** Follow any feed for a user
+
+9. **GET /feeds/follow:** Get all feeds followed by a user
+
+10. **DELETE /feeds/follow/{feed_id}:** Unfollow a followed feed
+
+11. **GET /feeds:** Get all Posts from scraped feeds that are followed by a user.
+-------------------------------------------------------------------------------------------
+- **Password Reset:** To Be added, for password reset request
+- **Manual Token request:** To Be added, for password manual token activation request
+- **Notifications:** To Be Added, for user based notifications.
+
 ## 🔧 Running the tests <a name = "tests"></a>
 
 Explain how to run the automated tests for this system.
