@@ -44,15 +44,12 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	app.logger.PrintInfo("Inserting new feed...", map[string]string{
-		"input": input.Name,
-	})
 	// Call the Insert() method on the feedModel to insert the feed record into the database.
 	err = app.models.Feeds.Insert(feed)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrDuplicateFeed):
-			v.AddError("name", "a feed with this name already exists")
+			v.AddError("url", "This feed already exists")
 			app.failedConstraintValidation(w, r, v.Errors)
 		default:
 			app.serverErrorResponse(w, r, err)

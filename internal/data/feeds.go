@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -212,6 +213,7 @@ func (m FeedModel) DeleteFeedFollow(feedFollow *FeedFollow) error {
 		ID:     feedFollow.ID,
 		UserID: feedFollow.UserID,
 	})
+	fmt.Println("Deleting Feed Follow: ", feedFollow.ID, " || User ID:", feedFollow.UserID)
 	// TODO: SQLC - Find a way to check for an already deleted follow without running
 	// The delete operation again and counting amount of records returned
 	// Currently it still works and passes the "unfollowed" response successfully

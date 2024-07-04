@@ -23,7 +23,8 @@ const (
 	// Context timeout
 	ResponseContextTimeout = 30 * time.Second
 	// Default Image Url
-	DefaultImageURL = "https://images.pexels.com/photos/17300603/pexels-photo-17300603/free-photo-of-a-little-girl-running-in-a-park-next-to-a-man-making-a-large-soap-bubble.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+	//https://images.pexels.com/photos/17300603/pexels-photo-17300603/free-photo-of-a-little-girl-running-in-a-park-next-to-a-man-making-a-large-soap-bubble.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1
+	DefaultImageURL = "https://images.unsplash.com/photo-1542396601-dca920ea2807?q=80&w=1351&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
 )
 
 var (
