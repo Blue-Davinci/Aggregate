@@ -34,6 +34,7 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 - [Authors](#authors)
 - [Acknowledgments](#acknowledgement)
 
+<hr />
 ## 🧐 About <a name = "about"></a>
 
 Aggregate is a content aggregation platform designed to streamline information consumption. Its purpose is to centralize feeds from various sources—such as RSS and Atom—into a unified stream. Users can effortlessly follow their favorite content, whether it’s news, blogs, or other updates. The project emphasizes efficiency, security, and a user-friendly experience, making it a valuable tool for staying informed in today’s fast-paced digital landscape. 🚀🌐
@@ -55,6 +56,7 @@ Before you can run or contribute to this project, you'll need to have the follow
 - A Go IDE or text editor: While not strictly necessary, a Go IDE or a text editor with Go support can make it easier to work with the code. I use vscode.
 - [Git](https://git-scm.com/downloads): You'll need Git to clone the repo.
 
+<hr />
 ### Installing
 
 1. **Clone the repository:** Start by cloning the repository to your local machine. Open a terminal, navigate to the directory where you want to clone the repository, and run the following command:
@@ -95,14 +97,68 @@ goose postgres postgres://aggregate:password@localhost/aggregate  up
     ```
     This will create an executable file in the current directory.
     <b>Note: The generated executable is for the windows environment</b>
+      <b>- However, You can find the linux build command within the makefile!</b>
 
-6. **Run the project:** You can run the project using the `go run` or use MakeFile and do:
+6. **Run the project:** You can run the project using the `go run` or use <b>`MakeFile`</b> and do:
 
     ```bash
     make run/api
     ```
 
-End with an example of getting some data out of the system or using it for a little demo.
+7. **MakeFile Help:** For additional supported commands run `make help`:
+
+  ```bash
+  make help
+  ```
+  - **Output:**
+  ```
+  make help
+  Usage: 
+  run/api            -  run the api application
+  build/api          -  build the cmd/api application
+  audit              -  tidy dependencies and format, vet and test all code
+  db/migrations/up   -  run the up migrations using confirm as prerequisite
+  vendor             -  tidy and vendor dependencies
+  ```
+
+### Description
+
+The application accepts command-line flags for configuration, establishes a connection pool to a database, and publishes variables for monitoring the application. The published variables include the application version, the number of active goroutines and the current Unix timestamp.
+  - This will start the application. You should be able to access it at `http://localhost:4000`.
+
+<hr />
+## Optional Parameters <a name = "optpars"></a>
+
+You can view the **parameters** by utilizing the `-help` command. Here is a rundown of 
+the available commands for a quick lookup.
+- **smtp-sender:** Sets the sender for SMTP (email) communications. Default: "Groovy <no-reply@groovy.com>".
+- **cors-trusted-origins [value]:** Trusted CORS origins (space separated)
+- **db-dsn [string]:** PostgreSQL DSN (default "{Path to your .env holding your DSN}")
+- **db-max-idle-conns [int]:** PostgreSQL max idle connections (default 25)
+- **db-max-idle-time [string]:** PostgreSQL max connection idle time (default "15m")
+- **db-max-open-conns [int]:** PostgreSQL max open connections (default 25)
+- **env [string]:** Environment (development|staging|production) (default "development")
+- **port [int]:** API server port (default 4000)
+- **smtp-host [string]:** SMTP host (default "sandbox.smtp.mailtrap.io"- I use mailtrap for tests)
+- **smtp-password [string]:** SMTP password (default "xxxxx")
+- **smtp-port [int]:** SMTP port (default 25)
+- **smtp-sender [string]:** SMTP sender (default "Groovy <no-reply@groovy.com>")
+- **smtp-username [string]:** SMTP username (default "skunkhunt42")
+- **baseurl [string]:** frontend url (default "http://localhost:5173")
+- **activationurl [string]:** frontend activation url (default "http://localhost:5173/verify?token=")
+- **passwordreseturl:** frontend password reset url (default "http://localhost:5173/reset?token=")
+
+Using `make run`, will run the API with a default connection string located 
+in `cmd\api\.env`. If you're using `powershell`, you need to load the values otherwise you will get
+a `cannot load env file` error. Use the PS code below to load it or change the env variable:
+```powershell
+$env:GROOVY_DB_DSN=(Get-Content -Path .\cmd\api\.env | Where-Object { $_ -match "GROOVY_DB_DSN" } | ForEach-Object { $($_.Split("=", 2)[1]) })
+```
+
+Alternatively, in unix systems you can make a .envrc file and load it directly in the makefile by importing like so:
+```makefile
+include .envrc
+```
 
 ## 🔧 Running the tests <a name = "tests"></a>
 
