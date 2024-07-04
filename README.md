@@ -29,8 +29,8 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 - [Deployment](#deployment)
 - [Usage](#usage)
 - [Built Using](#built_using)
-- [TODO](../TODO.md)
-- [Contributing](../CONTRIBUTING.md)
+- [API Endpoints](#endpoints)
+- [TODO](./TODO.md)
 - [Authors](#authors)
 - [Acknowledgments](#acknowledgement)
 
@@ -272,7 +272,7 @@ See also the list of [contributors](https://github.com/blue-davinci/aggregate/co
 
 - Hat tip to anyone whose code was used
 
-- Inspiration
+- Inspiration [todo]
 
 ## 📚 References <a name = "references"></a>
 
