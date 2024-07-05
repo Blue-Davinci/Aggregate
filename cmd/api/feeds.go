@@ -105,6 +105,7 @@ func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Reques
 
 func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
+	//
 	var input struct {
 		data.Filters
 	}
