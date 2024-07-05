@@ -252,8 +252,34 @@ go run main.go
 ## 🚀 Deployment <a name = "deployment"></a>
 
 This application can be deployed using Docker and Docker Compose. Here are the steps to do so:
-<strong>[TO BE ADDED]</strong>
+1. **Build the Docker image:** by navigating to the root directory.
+```
+cd aggregate
+```
+2. **Verify Configs:** Check and verify the following file incase you want to change any configs:
+```bash
+- docker-compose.yml
+- Dockerfile
+```
+3. **Build The Container:** Run the following command to build the docker image based on the `docker-compose.yml` file:
+```
+docker compose up --build
+```
 
+
+Please remember you can use flags, mentioned [here](#optpars) while running the api by setting them in
+the `Dockerfile` like so:
+
+```
+CMD ["./bin/api.exe", "-smtp-username", "smtp username", "-port", "your_port", "-smtp-password", "your_smtp_pass"]
+```
+
+<b>Note:</b> <strong>There is a pre-built</strong> package for anyone who may feel <i>less enthusiastic</i> about building,
+it by themselves. You can get it by doing:
+
+```bash
+docker pull ghcr.io/blue-davinci/aggregate:latest
+```
 <hr />
 
 ## ⛏️ Built Using <a name = "built_using"></a>
