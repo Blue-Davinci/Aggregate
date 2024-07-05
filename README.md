@@ -285,8 +285,7 @@ docker pull ghcr.io/blue-davinci/aggregate:latest
 ## ⛏️ Built Using <a name = "built_using"></a>
 - [PostgreSQL](https://www.postgresql.org/) - Database
 - [Go](https://golang.org/) - Backend
-- [HTML](https://developer.mozilla.org/en-US/docs/Web/HTML) - Email Template
-- [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) - Frontend behavior
+- [HTML/CSS](https://developer.mozilla.org/en-US/docs/Web/HTML) - Templates
 
 ## ✍️ Authors <a name = "authors"></a>
 
