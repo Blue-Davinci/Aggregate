@@ -37,6 +37,7 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 - [Acknowledgments](#acknowledgement)
 
 <hr />
+
 ## 🧐 About <a name = "about"></a>
 
 Aggregate is a content aggregation platform designed to streamline information consumption. Its purpose is to centralize feeds from various sources—such as RSS and Atom—into a unified stream. Users can effortlessly follow their favorite content, whether it’s news, blogs, or other updates. The project emphasizes efficiency, security, and a user-friendly experience, making it a valuable tool for staying informed in today’s fast-paced digital landscape. 🚀🌐
@@ -59,6 +60,7 @@ Before you can run or contribute to this project, you'll need to have the follow
 - [Git](https://git-scm.com/downloads): You'll need Git to clone the repo.
 
 <hr />
+
 ### Installing
 
 1. **Clone the repository:** Start by cloning the repository to your local machine. Open a terminal, navigate to the directory where you want to clone the repository, and run the following command:
@@ -129,6 +131,7 @@ The application accepts command-line flags for configuration, establishes a conn
   - This will start the application. You should be able to access it at `http://localhost:4000`.
 
 <hr />
+
 ## Optional Parameters <a name = "optpars"></a>
 
 You can view the **parameters** by utilizing the `-help` command. Here is a rundown of 
@@ -149,6 +152,12 @@ the available commands for a quick lookup.
 - **baseurl [string]:** frontend url (default "http://localhost:5173")
 - **activationurl [string]:** frontend activation url (default "http://localhost:5173/verify?token=")
 - **passwordreseturl:** frontend password reset url (default "http://localhost:5173/reset?token=")
+- **scraper-routines [int]:** Number of scraper routines to run (default 5)- **scraper-interval [int]:** Interval in seconds before the next bunch of feeds are fetched (default 40)
+- **scraper-retry-max [int]:** Maximum number of retries for HTTP requests (default 3)
+- **scraper-timeout [int]:** HTTP client timeout in seconds (default 15)
+- **~~cors-trusted-origins [value]~~:** Trusted CORS origins (space separated)
+- **notifier-interval [int64]:** Interval in minutes for the notifier to fetch new notifications (default 10)
+- **notifier-delete-interval [int64]:** Interval in minutes for the notifier to delete old notifications (default 100)
 
 Using `make run`, will run the API with a default connection string located 
 in `cmd\api\.env`. If you're using `powershell`, you need to load the values otherwise you will get
@@ -174,6 +183,7 @@ go run ./cmd/api
 ```
 
 <hr />
+
 ### API Endpoints <a name = "endpoints"></a>
 Below are all the end points for the API and a high level description of what they do.
 
@@ -198,10 +208,16 @@ Below are all the end points for the API and a high level description of what th
 10. **DELETE /feeds/follow/{feed_id}:** Unfollow a followed feed
 
 11. **GET /feeds:** Get all Posts from scraped feeds that are followed by a user.
+
+12. **/password-reset:** Initial request for password reset that sends a validation tokken
+
+13. **/password:** Updates actual password after reset.
+
+14. **/notifications:** Retrieve notifications on per user basis. Current implimentation supports <b>polling and on-demand basis</b>
 -------------------------------------------------------------------------------------------
-- **Password Reset:** To Be added, for password reset request
+
 - **Manual Token request:** To Be added, for password manual token activation request
-- **Notifications:** To Be Added, for user based notifications.
+
 
 ## 🔧 Running the tests <a name = "tests"></a>
 
@@ -299,7 +315,7 @@ See also the list of [contributors](https://github.com/blue-davinci/aggregate/co
 
 - Hat tip to anyone whose code was used
 
-- Inspiration [todo]
+- Inspiration :- A need to integrate all the favorite blogs into one location in a seamless way.
 
 ## 📚 References <a name = "references"></a>
 
