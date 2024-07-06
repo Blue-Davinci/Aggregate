@@ -61,6 +61,7 @@ func (app *application) userRoutes() chi.Router {
 	userRoutes.Post("/", app.registerUserHandler)
 	// /activation : for activating accounts
 	userRoutes.Put("/activated", app.activateUserHandler)
+	userRoutes.Put("/password", app.updateUserPasswordHandler)
 	// /password-reset : for resetting passwords
 	return userRoutes
 }
@@ -89,6 +90,7 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 func (app *application) apiKeyRoutes() chi.Router {
 	apiKeyRoutes := chi.NewRouter()
 	apiKeyRoutes.Post("/authentication", app.createAuthenticationApiKeyHandler)
+	apiKeyRoutes.Post("/password-reset", app.createPasswordResetTokenHandler)
 	// /password-reset : for sending keys for resetting passwords
 
 	return apiKeyRoutes
