@@ -37,7 +37,7 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 - [Acknowledgments](#acknowledgement)
 
 <hr />
-## 🧐 About <a name = "about"></a>
+##🧐 About <a name = "about"></a>
 
 Aggregate is a content aggregation platform designed to streamline information consumption. Its purpose is to centralize feeds from various sources—such as RSS and Atom—into a unified stream. Users can effortlessly follow their favorite content, whether it’s news, blogs, or other updates. The project emphasizes efficiency, security, and a user-friendly experience, making it a valuable tool for staying informed in today’s fast-paced digital landscape. 🚀🌐
 
