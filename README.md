@@ -37,7 +37,8 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 - [Acknowledgments](#acknowledgement)
 
 <hr />
-##🧐 About <a name = "about"></a>
+
+## 🧐 About <a name = "about"></a>
 
 Aggregate is a content aggregation platform designed to streamline information consumption. Its purpose is to centralize feeds from various sources—such as RSS and Atom—into a unified stream. Users can effortlessly follow their favorite content, whether it’s news, blogs, or other updates. The project emphasizes efficiency, security, and a user-friendly experience, making it a valuable tool for staying informed in today’s fast-paced digital landscape. 🚀🌐
 
@@ -59,6 +60,7 @@ Before you can run or contribute to this project, you'll need to have the follow
 - [Git](https://git-scm.com/downloads): You'll need Git to clone the repo.
 
 <hr />
+
 ### Installing
 
 1. **Clone the repository:** Start by cloning the repository to your local machine. Open a terminal, navigate to the directory where you want to clone the repository, and run the following command:
@@ -129,6 +131,7 @@ The application accepts command-line flags for configuration, establishes a conn
   - This will start the application. You should be able to access it at `http://localhost:4000`.
 
 <hr />
+
 ## Optional Parameters <a name = "optpars"></a>
 
 You can view the **parameters** by utilizing the `-help` command. Here is a rundown of 
@@ -174,6 +177,7 @@ go run ./cmd/api
 ```
 
 <hr />
+
 ### API Endpoints <a name = "endpoints"></a>
 Below are all the end points for the API and a high level description of what they do.
 
