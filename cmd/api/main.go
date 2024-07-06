@@ -47,8 +47,9 @@ type config struct {
 		}
 	}
 	notifier struct {
-		cronJob  *cron.Cron
-		interval int64
+		cronJob        *cron.Cron
+		interval       int64
+		deleteinterval int64
 	}
 	cors struct {
 		trustedOrigins []string
@@ -103,6 +104,8 @@ func main() {
 	})
 	// fetching interval for the notifier
 	flag.Int64Var(&cfg.notifier.interval, "notifier-interval", 10, "Interval in minutes for the notifier to fetch new notifications")
+	// delete interval for the notifier
+	flag.Int64Var(&cfg.notifier.deleteinterval, "notifier-delete-interval", 100, "Interval in minutes for the notifier to delete old notifications")
 	//parse our flags
 	flag.Parse()
 	// add our cronJob
