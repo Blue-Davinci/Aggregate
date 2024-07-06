@@ -16,6 +16,7 @@ import (
 	"github.com/blue-davinci/aggregate/internal/mailer"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/robfig/cron/v3"
 )
 
 // a quick variable to hold our version. ToDo: Change this.
@@ -44,6 +45,10 @@ type config struct {
 			retrymax int
 			timeout  int
 		}
+	}
+	notifier struct {
+		cronJob  *cron.Cron
+		interval int64
 	}
 	cors struct {
 		trustedOrigins []string
@@ -96,9 +101,12 @@ func main() {
 		cfg.cors.trustedOrigins = strings.Fields(val)
 		return nil
 	})
+	// fetching interval for the notifier
+	flag.Int64Var(&cfg.notifier.interval, "notifier-interval", 10, "Interval in minutes for the notifier to fetch new notifications")
 	//parse our flags
 	flag.Parse()
-
+	// add our cronJob
+	cfg.notifier.cronJob = cron.New()
 	// create our connection pull
 	db, err := openDB(cfg)
 	if err != nil {
@@ -117,6 +125,8 @@ func main() {
 	}
 	// start the scraper function for our RSSFeeds as a goroutine
 	go app.startRssFeedScraperHandler()
+	// hook our notifier
+	go app.fetchNotificationsHandler()
 	// start our server
 	err = app.server()
 	if err != nil {

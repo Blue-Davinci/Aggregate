@@ -49,7 +49,7 @@ func (app *application) generalRoutes() chi.Router {
 		expvar.Handler().ServeHTTP(w, r)
 	})
 	generalRoutes.Get("/health", app.healthcheckHandler)
-
+	generalRoutes.Get("/notifications", app.getUserNotificationsHandler)
 	return generalRoutes
 }
 

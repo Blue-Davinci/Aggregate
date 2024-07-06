@@ -40,6 +40,14 @@ type FeedFollow struct {
 	FeedID    uuid.UUID
 }
 
+type Notification struct {
+	ID        int32
+	FeedID    uuid.UUID
+	FeedName  string
+	PostCount int32
+	CreatedAt time.Time
+}
+
 type RssfeedPost struct {
 	ID                 uuid.UUID
 	CreatedAt          time.Time
