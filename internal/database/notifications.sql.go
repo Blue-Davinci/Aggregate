@@ -14,7 +14,7 @@ import (
 
 const clearNotifications = `-- name: ClearNotifications :exec
 DELETE FROM notifications
-WHERE created_at <= now() - ($1 * INTERVAL '90 minute')
+WHERE created_at <= now() - ($1 * INTERVAL '1 minute')
 `
 
 func (q *Queries) ClearNotifications(ctx context.Context, dollar_1 interface{}) error {
