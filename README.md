@@ -209,11 +209,11 @@ Below are all the end points for the API and a high level description of what th
 
 11. **GET /feeds:** Get all Posts from scraped feeds that are followed by a user.
 
-12. **/password-reset:** Initial request for password reset that sends a validation tokken
+12. **POST /password-reset:** Initial request for password reset that sends a validation tokken
 
-13. **/password:** Updates actual password after reset.
+13. **PUT /password:** Updates actual password after reset.
 
-14. **/notifications:** Retrieve notifications on per user basis. Current implimentation supports <b>polling and on-demand basis</b>
+14. **GET /notifications:** Retrieve notifications on per user basis. Current implimentation supports <b>polling and on-demand basis</b>
 -------------------------------------------------------------------------------------------
 
 - **Manual Token request:** To Be added, for password manual token activation request
