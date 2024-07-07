@@ -87,8 +87,10 @@ func (app *application) createPasswordResetTokenHandler(w http.ResponseWriter, r
 	user, err := app.models.Users.GetByEmail(input.Email)
 	if err != nil {
 		switch {
+		// We willl use a generic error message to avoid leaking information about which
+		// email addresses are registered with the system.
 		case errors.Is(err, data.ErrRecordNotFound):
-			v.AddError("email", "no matching email address found")
+			v.AddError("generic", "if we found a matching email address, we have sent password reset instructions to it")
 			app.failedValidationResponse(w, r, v.Errors)
 		default:
 			app.serverErrorResponse(w, r, err)
@@ -123,7 +125,9 @@ func (app *application) createPasswordResetTokenHandler(w http.ResponseWriter, r
 		}
 	})
 	// Send a 202 Accepted response and confirmation message to the client.
-	env := envelope{"message": "an email will be sent to you containing password reset instructions"}
+	// But use a generic message as well
+	// an email will be sent to you containing password reset instructions
+	env := envelope{"message": "if we found a matching email address, we have sent password reset instructions to it"}
 	err = app.writeJSON(w, http.StatusAccepted, env, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

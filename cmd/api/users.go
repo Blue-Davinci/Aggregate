@@ -205,6 +205,19 @@ func (app *application) updateUserPasswordHandler(w http.ResponseWriter, r *http
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	// send the user a confirmation email
+	app.background(func() {
+		data := map[string]any{
+			"userName": user.Name,
+		}
+		// Since email addresses MAY be case sensitive, notice that we are sending this
+		// email using the address stored in our database for the user --- not to the
+		// input.Email address provided by the client in this request.
+		err = app.mailer.Send(user.Email, "password_acknowledgment.tmpl", data)
+		if err != nil {
+			app.logger.PrintError(err, nil)
+		}
+	})
 	// Send the user a confirmation message.
 	env := envelope{"message": "your password was successfully reset"}
 	err = app.writeJSON(w, http.StatusOK, env, nil)
