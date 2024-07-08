@@ -58,6 +58,7 @@ func ValidateFeed(v *validator.Validator, feed *Feed) {
 	v.Check(feed.FeedDescription != "", "feed description", "must be provided")
 	v.Check(len(feed.FeedDescription) <= 500, "feed description", "must not be more than 500 bytes long")
 }
+
 func ValidateFeedFollow(v *validator.Validator, feedfollow *FeedFollow) {
 	_, isvalid := ValidateUUID(feedfollow.ID.String())
 	v.Check(feedfollow.ID != uuid.Nil, "feed id", "must be provided")

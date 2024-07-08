@@ -11,6 +11,7 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/blue-davinci/aggregate/internal/database"
+	"github.com/blue-davinci/aggregate/internal/validator"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/mmcdole/gofeed"
@@ -31,6 +32,8 @@ var (
 	// Context Error
 	ErrContextDeadline        = errors.New("timeout exceeded while fetching feeds")
 	ErrUnableToDetectFeedType = errors.New("unable to detect the feed type in the url")
+	ErrDuplicateFavorite      = errors.New("duplicate favorite")
+	ErrPostNotFound           = errors.New("post not found")
 )
 
 // RSSFeedDataModel is a struct that represents what our Post looks like
@@ -65,6 +68,18 @@ type RSSPostFavorite struct {
 	Feed_ID    uuid.UUID `json:"feed_id"`
 	User_ID    int64     `json:"-"`
 	Created_At time.Time `json:"created_at"`
+}
+
+func ValidateFavoritePost(v *validator.Validator, favoritePost *RSSPostFavorite) {
+	_, isvalidPostID := ValidateUUID(favoritePost.Post_ID.String())
+	_, isvalidFeedID := ValidateUUID(favoritePost.Feed_ID.String())
+	v.Check(isvalidPostID, "feed id", "must be a valid UUID")
+	v.Check(isvalidFeedID, "feed id", "must be a valid UUID")
+}
+
+func ValidatePostID(v *validator.Validator, favoritePost *RSSPostFavorite) {
+	_, isvalidPostID := ValidateUUID(favoritePost.Post_ID.String())
+	v.Check(isvalidPostID, "post id", "must be a valid UUID")
 }
 
 // GetNextFeedsToFetch() will get the next feeds to fetch for our scraper after which
@@ -200,6 +215,58 @@ func (m RSSFeedDataModel) GetRSSFavoritePostsForUser(userID int64) ([]*RSSPostFa
 		rssPostsFavorites = append(rssPostsFavorites, &rssPostFavorite)
 	}
 	return rssPostsFavorites, nil
+}
+
+// CreateRSSFavoritePost() will create a new RSS Favorite Post for a user
+func (m RSSFeedDataModel) CreateRSSFavoritePost(userID int64, rssFavoritePost *RSSPostFavorite) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Create a new RSS Favorite Post
+	queryresult, err := m.DB.CreateRSSFavoritePost(ctx, database.CreateRSSFavoritePostParams{
+		PostID:    rssFavoritePost.Post_ID,
+		FeedID:    rssFavoritePost.Feed_ID,
+		UserID:    userID,
+		CreatedAt: time.Now().UTC(),
+	})
+	// postfavorites_post_id_key
+	if err != nil {
+		switch {
+		case err.Error() != `pq: duplicate key value violates unique constraint "rssfeed_posts_itemurl_key"`:
+			return ErrDuplicateFavorite
+		default:
+			return err
+		}
+	}
+	// Set additional fields
+	rssFavoritePost.ID = queryresult.ID
+	rssFavoritePost.User_ID = queryresult.UserID
+	rssFavoritePost.Created_At = queryresult.CreatedAt
+	return nil
+}
+
+// DeleteRSSFavoritePost
+// DeleteRSSFavoritePost() will delete an RSS Favorite Post for a user
+func (m RSSFeedDataModel) DeleteRSSFavoritePost(userID int64, rssFavoritePost *RSSPostFavorite) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	fmt.Println("Recieved, ID:", userID, "|| Value: ", rssFavoritePost.Post_ID)
+	// Delete the RSS Favorite Post
+	err := m.DB.DeleteRSSFavoritePost(ctx, database.DeleteRSSFavoritePostParams{
+		PostID: rssFavoritePost.Post_ID,
+		UserID: userID,
+	})
+	if err != nil {
+		switch {
+		case err == sql.ErrNoRows:
+			return ErrPostNotFound
+		default:
+			fmt.Println("The error: ", err)
+			return err
+		}
+	}
+	return nil
 }
 
 // =======================================================================================================================

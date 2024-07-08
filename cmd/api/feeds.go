@@ -140,7 +140,7 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 
 func (app *application) deleteFeedFollowHandler(w http.ResponseWriter, r *http.Request) {
 	//Read our data as parameters from the URL as it's a HTTP DELETE Request
-	feedfollowID, err := app.readIDParam(r)
+	feedfollowID, err := app.readIDParam(r, "feedID")
 	//check whether there's an error or the feedID is invalid
 	if err != nil || feedfollowID == uuid.Nil {
 		app.notFoundResponse(w, r)

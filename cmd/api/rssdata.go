@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/blue-davinci/aggregate/internal/data"
 	"github.com/blue-davinci/aggregate/internal/database"
 	"github.com/blue-davinci/aggregate/internal/validator"
+	"github.com/google/uuid"
 )
 
 // startRssFeedScraperHandler() Is the entry point of our scraper function
@@ -145,6 +147,8 @@ func (app *application) GetFollowedRssPostsForUserHandler(w http.ResponseWriter,
 
 }
 
+// GetRSSFavoritePostsForUserHandler Gets all posts that have been marked as favorites by a user
+// This is a GET request to /feeds/favorites and passes through the user-id
 func (app *application) GetRSSFavoritePostsForUserHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
 	var input struct {
@@ -174,6 +178,95 @@ func (app *application) GetRSSFavoritePostsForUserHandler(w http.ResponseWriter,
 	}
 	// Return the feeds in the response body
 	err = app.writeJSON(w, http.StatusOK, envelope{"favorite_rss_posts": userRssFavoritePosts}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// CreateRSSFavoritePostHandler Creates a new favorite post for a user
+func (app *application) CreateRSSFavoritePostHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Post_ID uuid.UUID `json:"post_id"`
+		Feed_ID uuid.UUID `json:"feed_id"`
+	}
+	// Read the JSON data from the request body
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	app.logger.PrintInfo("Creating a new favorite Post...", map[string]string{
+		"input": input.Post_ID.String(),
+	})
+	// Get our context user
+	user := app.contextGetUser(r)
+	// Create a new feavorite post to read in the data
+	favoritePost := &data.RSSPostFavorite{
+		Post_ID: input.Post_ID,
+		Feed_ID: input.Feed_ID,
+	}
+	// Initialize a validator for our data
+	v := validator.New()
+	if data.ValidateFavoritePost(v, favoritePost); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	// check if the post exists
+	err = app.models.RSSFeedData.CreateRSSFavoritePost(user.ID, favoritePost)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicateFavorite):
+			v.AddError("post_id", "cannot favorite a post twice")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	// Return a 201 Created status code and the new Feed Favorited record in the response body
+	err = app.writeJSON(w, http.StatusCreated, envelope{"favorite_rss_post": favoritePost}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// deleteFeedFollowHandler Deletes a Post from the user's favorite list
+// will accept a parameterized URL with the POST_ID
+func (app *application) DeleteFavoritePostHandler(w http.ResponseWriter, r *http.Request) {
+	// Read the postID from the URL
+	postIDValue, err := app.readIDParam(r, "postID")
+	if err != nil || postIDValue == uuid.Nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Create a new favorite post to read in the data
+	favoritePost := &data.RSSPostFavorite{
+		Post_ID: postIDValue,
+	}
+	// Initialize a new Validator.
+	v := validator.New()
+	if data.ValidatePostID(v, favoritePost); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Get our context user
+	user := app.contextGetUser(r)
+	// Call our delete function
+	err = app.models.RSSFeedData.DeleteRSSFavoritePost(user.ID, favoritePost)
+	if err != nil {
+		app.logger.PrintInfo("2. In Deleter... ", nil)
+		switch {
+		case errors.Is(err, data.ErrPostNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Return a 200 OK status code along with a success message.
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "post successfully unfavorite"}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

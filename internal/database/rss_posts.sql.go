@@ -13,6 +13,37 @@ import (
 	"github.com/google/uuid"
 )
 
+const createRSSFavoritePost = `-- name: CreateRSSFavoritePost :one
+INSERT INTO postfavorites (post_id, feed_id, user_id, created_at)
+VALUES ($1, $2, $3, $4)
+RETURNING id, post_id, feed_id, user_id, created_at
+`
+
+type CreateRSSFavoritePostParams struct {
+	PostID    uuid.UUID
+	FeedID    uuid.UUID
+	UserID    int64
+	CreatedAt time.Time
+}
+
+func (q *Queries) CreateRSSFavoritePost(ctx context.Context, arg CreateRSSFavoritePostParams) (Postfavorite, error) {
+	row := q.db.QueryRowContext(ctx, createRSSFavoritePost,
+		arg.PostID,
+		arg.FeedID,
+		arg.UserID,
+		arg.CreatedAt,
+	)
+	var i Postfavorite
+	err := row.Scan(
+		&i.ID,
+		&i.PostID,
+		&i.FeedID,
+		&i.UserID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createRssFeedPost = `-- name: CreateRssFeedPost :one
 INSERT INTO rssfeed_posts (
     id, 
@@ -82,6 +113,21 @@ func (q *Queries) CreateRssFeedPost(ctx context.Context, arg CreateRssFeedPostPa
 		&i.FeedID,
 	)
 	return i, err
+}
+
+const deleteRSSFavoritePost = `-- name: DeleteRSSFavoritePost :exec
+DELETE FROM postfavorites
+WHERE post_id = $1 AND user_id = $2
+`
+
+type DeleteRSSFavoritePostParams struct {
+	PostID uuid.UUID
+	UserID int64
+}
+
+func (q *Queries) DeleteRSSFavoritePost(ctx context.Context, arg DeleteRSSFavoritePostParams) error {
+	_, err := q.db.ExecContext(ctx, deleteRSSFavoritePost, arg.PostID, arg.UserID)
+	return err
 }
 
 const getFollowedRssPostsForUser = `-- name: GetFollowedRssPostsForUser :many

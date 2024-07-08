@@ -162,9 +162,10 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 
 // Retrieve the "id" URL parameter from the current request context, then convert it to
 // an integer and return it. If the operation isn't successful, return a nil UUID and an error.
-func (app *application) readIDParam(r *http.Request) (uuid.UUID, error) {
+func (app *application) readIDParam(r *http.Request, parameterName string) (uuid.UUID, error) {
 	// We use chi's URLParam method to get our ID
-	params := chi.URLParam(r, "feedID")
+
+	params := chi.URLParam(r, parameterName)
 	feedID, isvalid := data.ValidateUUID(params)
 	if !isvalid {
 		return uuid.Nil, errors.New("invalid id parameter")

@@ -28,3 +28,12 @@ LIMIT $2 OFFSET $3;
 SELECT id, post_id, feed_id, user_id, created_at
 FROM postfavorites
 WHERE user_id = $1;
+
+-- name: CreateRSSFavoritePost :one
+INSERT INTO postfavorites (post_id, feed_id, user_id, created_at)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: DeleteRSSFavoritePost :exec
+DELETE FROM postfavorites
+WHERE post_id = $1 AND user_id = $2;

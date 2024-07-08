@@ -74,7 +74,11 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes := chi.NewRouter()
 	//authenticated/activated endpoints
 	feedRoutes.With(dynamicMiddleware.Then).Post("/", app.createFeedHandler)
+
 	feedRoutes.With(dynamicMiddleware.Then).Get("/favorites", app.GetRSSFavoritePostsForUserHandler)
+	feedRoutes.With(dynamicMiddleware.Then).Post("/favorites", app.CreateRSSFavoritePostHandler)
+	feedRoutes.With(dynamicMiddleware.Then).Delete("/favorites/{postID}", app.DeleteFavoritePostHandler)
+
 	feedRoutes.With(dynamicMiddleware.Then).Post("/follow", app.createFeedFollowHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow", app.getAllFeedsFollowedHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/{feedID}", app.deleteFeedFollowHandler)

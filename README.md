@@ -214,6 +214,8 @@ Below are all the end points for the API and a high level description of what th
 13. **PUT /password:** Updates actual password after reset.
 
 14. **GET /notifications:** Retrieve notifications on per user basis. Current implimentation supports <b>polling and on-demand basis</b>
+
+15. **GET /feeds/favorites:** Get favorite feeds for a user
 -------------------------------------------------------------------------------------------
 
 - **Manual Token request:** To Be added, for password manual token activation request
