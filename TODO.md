@@ -6,6 +6,7 @@ This document outlines the tasks and features that are planned or need to be imp
 - **Dockerization:** ~~Containerize the API.~~
 - **Features:**: 
                 - ~~Add password reset~~
-                - Add a favorite feature for a specific post.
+                - ~~Add a favorite feature for a specific post.~~
+                - Allow a user to see all their favorited posts.
                 - Add Manual token request incase signup aut0-sending initially fails.
                 - ~~Alert and Notifications implimentations.~~
