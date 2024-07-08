@@ -44,6 +44,7 @@ type RSSFeed struct {
 	ID        uuid.UUID `json:"id"`
 	Createdat time.Time `json:"created_at"`
 	Updatedat time.Time `json:"updated_at"`
+	Feed_ID   uuid.UUID `json:"feed_id"`
 	Channel   struct {
 		Title       string    `xml:"title"`
 		Link        string    `xml:"link"`
@@ -121,12 +122,14 @@ func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, filters Filte
 	// make a store for our processed feeds
 	rssPosts := []*RSSFeed{}
 	for _, row := range rssFeedPosts {
+
 		var rssFeed RSSFeed
 		totalRecords = int(row.Count)
 		// General infor
 		rssFeed.ID = row.ID
 		rssFeed.Createdat = row.CreatedAt
 		rssFeed.Updatedat = row.UpdatedAt
+		rssFeed.Feed_ID = row.FeedID
 		// Channel info
 		rssFeed.Channel.Title = row.Channeltitle
 		rssFeed.Channel.Description = row.Channeldescription.String
