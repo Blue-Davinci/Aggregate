@@ -23,3 +23,8 @@ JOIN feed_follows ON rssfeed_posts.feed_id = feed_follows.feed_id
 WHERE feed_follows.user_id = $1
 ORDER BY rssfeed_posts.itempublished_at DESC
 LIMIT $2 OFFSET $3;
+
+-- name: GetRSSFavoritePostsForUser :many
+SELECT id, post_id, feed_id, user_id, created_at
+FROM postfavorites
+WHERE user_id = $1;

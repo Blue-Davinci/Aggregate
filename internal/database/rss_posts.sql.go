@@ -152,3 +152,38 @@ func (q *Queries) GetFollowedRssPostsForUser(ctx context.Context, arg GetFollowe
 	}
 	return items, nil
 }
+
+const getRSSFavoritePostsForUser = `-- name: GetRSSFavoritePostsForUser :many
+SELECT id, post_id, feed_id, user_id, created_at
+FROM postfavorites
+WHERE user_id = $1
+`
+
+func (q *Queries) GetRSSFavoritePostsForUser(ctx context.Context, userID int64) ([]Postfavorite, error) {
+	rows, err := q.db.QueryContext(ctx, getRSSFavoritePostsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Postfavorite
+	for rows.Next() {
+		var i Postfavorite
+		if err := rows.Scan(
+			&i.ID,
+			&i.PostID,
+			&i.FeedID,
+			&i.UserID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

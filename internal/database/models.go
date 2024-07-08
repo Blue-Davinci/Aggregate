@@ -48,6 +48,14 @@ type Notification struct {
 	CreatedAt time.Time
 }
 
+type Postfavorite struct {
+	ID        int64
+	PostID    uuid.UUID
+	FeedID    uuid.UUID
+	UserID    int64
+	CreatedAt time.Time
+}
+
 type RssfeedPost struct {
 	ID                 uuid.UUID
 	CreatedAt          time.Time

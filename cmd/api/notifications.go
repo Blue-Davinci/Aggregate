@@ -98,10 +98,11 @@ func (app *application) getUserNotificationsHandler(w http.ResponseWriter, r *ht
 	qs := r.URL.Query()
 	// use our helpers to convert the queries
 	input.Interval = int64(app.readInt(qs, "interval", int(app.config.notifier.interval), v))
+
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
-	input.Filters.Sort = app.readString(qs, "sort", "name")
-	input.Filters.SortSafelist = []string{"interval", "-interval"}
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{"interval", "id", "-id", "-interval"}
 	// Perform validation
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
@@ -117,6 +118,9 @@ func (app *application) getUserNotificationsHandler(w http.ResponseWriter, r *ht
 	if err != nil {
 		app.logger.PrintError(err, nil)
 	}
+	app.logger.PrintInfo("Fetching user notifications", map[string]string{
+		"notifications total": fmt.Sprintf("%d", len(notifications)),
+	})
 	// Send the notifications to the client
 	err = app.writeJSON(w, http.StatusOK, envelope{"notifications": notifications}, nil)
 	if err != nil {

@@ -33,6 +33,7 @@ var (
 	ErrUnableToDetectFeedType = errors.New("unable to detect the feed type in the url")
 )
 
+// RSSFeedDataModel is a struct that represents what our Post looks like
 type RSSFeedDataModel struct {
 	DB *database.Queries
 }
@@ -55,6 +56,15 @@ type RSSItem struct {
 	Description string `xml:"description"`
 	PubDate     string `xml:"pubDate"`
 	ImageURL    string `xml:"image_url"`
+}
+
+// We make a solo struct that will hold a returned Post Favorite
+type RSSPostFavorite struct {
+	ID         int64     `json:"id"`
+	Post_ID    uuid.UUID `json:"post_id"`
+	Feed_ID    uuid.UUID `json:"feed_id"`
+	User_ID    int64     `json:"-"`
+	Created_At time.Time `json:"created_at"`
 }
 
 // GetNextFeedsToFetch() will get the next feeds to fetch for our scraper after which
@@ -162,6 +172,34 @@ func (m RSSFeedDataModel) CreateRssFeedPost(rssFeed *RSSFeed, feedID *uuid.UUID)
 		}
 	}
 	return nil
+}
+
+// GetRSSFavoritePostsForUser() returns the RSS Posts that a user has favorited
+// It will take in the userID and return a slice of RSSPostFavorite structs and an error if any
+// Should be used in tandem with GetFollowedRssPostsForUser()
+func (m RSSFeedDataModel) GetRSSFavoritePostsForUser(userID int64) ([]*RSSPostFavorite, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Get favorited posts, passing in the user's ID as the parameter
+	rssFeedFavoritePosts, err := m.DB.GetRSSFavoritePostsForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	// make a store for our processed feeds
+	rssPostsFavorites := []*RSSPostFavorite{}
+	for _, row := range rssFeedFavoritePosts {
+		var rssPostFavorite RSSPostFavorite
+		// General infor
+		rssPostFavorite.ID = row.ID
+		rssPostFavorite.Post_ID = row.PostID
+		rssPostFavorite.Feed_ID = row.FeedID
+		rssPostFavorite.User_ID = row.UserID
+		rssPostFavorite.Created_At = row.CreatedAt
+		//append our feed to the final slice
+		rssPostsFavorites = append(rssPostsFavorites, &rssPostFavorite)
+	}
+	return rssPostsFavorites, nil
 }
 
 // =======================================================================================================================
