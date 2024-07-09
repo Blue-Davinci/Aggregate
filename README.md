@@ -306,8 +306,10 @@ docker pull ghcr.io/blue-davinci/aggregate:latest
 <hr />
 
 ## ⛏️ Built Using <a name = "built_using"></a>
-- [PostgreSQL](https://www.postgresql.org/) - Database
 - [Go](https://golang.org/) - Backend
+- [PostgreSQL](https://www.postgresql.org/) - Database
+- [SQLC](https://github.com/kyleconroy/sqlc) - Generate type safe Go from SQL
+- [Goose](https://github.com/pressly/goose) - Database migration tool
 - [HTML/CSS](https://developer.mozilla.org/en-US/docs/Web/HTML) - Templates
 
 ## ✍️ Authors <a name = "authors"></a>
