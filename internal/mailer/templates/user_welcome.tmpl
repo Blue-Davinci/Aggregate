@@ -111,23 +111,23 @@ Thanks, The Aggregate Team
       <p>
         Otherwise, please send a request to the
         <code>PUT /v1/users/password</code> endpoint with the following JSON
-        body to set a new password:
+        body:
       </p>
       <pre><code>
-        {"password": "your new password", "token": "{{.passwordResetToken}}"}
+        {"token": "{{.activationToken}}"}
         </code></pre>
       <p>Or use the following to reset your password:</p>
-      <a href="{{.passwordResetURL}}" class="button">Reset Password</a>
+      <a href="{{.activationURL}}" class="button">Activate Account</a>
       <p>
         Please note that this is a <strong>one-time</strong> use token and it
-        will expire in <strong>45 minutes.</strong>
+        will expire in <strong>3 days.</strong>
       </p>
       <p>
         If you need another token, please make a
         <code>POST /v1/tokens/password-reset</code> request.
       </p>
       <p>Thanks,</p>
-      <p>The Groovy Team</p>
+      <p>The Aggregate Team</p>
       <hr />
       <div class="footer">
         <p>The Aggregate Project, 6969 Street</p>

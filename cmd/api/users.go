@@ -63,6 +63,9 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	app.logger.PrintInfo("Token Has Been generated for new user", map[string]string{
+		"token": token.Plaintext,
+	})
 	app.background(func() {
 		// As there are now multiple pieces of data that we want to pass to our email
 		// templates, we create a map to act as a 'holding structure' for the data. This
