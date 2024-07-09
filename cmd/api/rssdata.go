@@ -271,3 +271,37 @@ func (app *application) DeleteFavoritePostHandler(w http.ResponseWriter, r *http
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+// GetRSSFavoritePostsOnlyForUserHandler() handles requests to get only favorite posts for a user
+// It is a GET request to /feeds/favorites/posts
+func (app *application) GetDetailedFavoriteRSSPosts(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		data.Filters
+	}
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	// get the sort values falling back to "id" if it is not provided
+	input.Filters.Sort = app.readString(qs, "sort", "created_at")
+	// Add the supported sort values for this endpoint to the sort safelist.
+	input.Filters.SortSafelist = []string{"created_at", "-created_at"}
+	// Perform validation
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// get the data
+
+	favoritePosts, metadata, err := app.models.RSSFeedData.GetRSSFavoritePostsOnlyForUser(app.contextGetUser(r).ID, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Return the feeds in the response body
+	err = app.writeJSON(w, http.StatusOK, envelope{"favorite_rss_posts": favoritePosts, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

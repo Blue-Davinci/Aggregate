@@ -233,3 +233,89 @@ func (q *Queries) GetRSSFavoritePostsForUser(ctx context.Context, userID int64) 
 	}
 	return items, nil
 }
+
+const getRSSFavoritePostsOnlyForUser = `-- name: GetRSSFavoritePostsOnlyForUser :many
+SELECT count(*) OVER(),
+    p.id,
+    p.created_at,
+    p.updated_at,
+    p.channeltitle,
+    p.channelurl,
+    p.channeldescription,
+    p.channellanguage,
+    p.itemtitle,
+    p.itemdescription,
+    p.itempublished_at,
+    p.itemurl,
+    p.img_url,
+    p.feed_id
+FROM 
+    rssfeed_posts p
+JOIN 
+    postfavorites f ON p.id = f.post_id
+WHERE 
+    f.user_id = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetRSSFavoritePostsOnlyForUserParams struct {
+	UserID int64
+	Limit  int32
+	Offset int32
+}
+
+type GetRSSFavoritePostsOnlyForUserRow struct {
+	Count              int64
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	Channeltitle       string
+	Channelurl         sql.NullString
+	Channeldescription sql.NullString
+	Channellanguage    sql.NullString
+	Itemtitle          string
+	Itemdescription    sql.NullString
+	ItempublishedAt    time.Time
+	Itemurl            string
+	ImgUrl             string
+	FeedID             uuid.UUID
+}
+
+func (q *Queries) GetRSSFavoritePostsOnlyForUser(ctx context.Context, arg GetRSSFavoritePostsOnlyForUserParams) ([]GetRSSFavoritePostsOnlyForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getRSSFavoritePostsOnlyForUser, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRSSFavoritePostsOnlyForUserRow
+	for rows.Next() {
+		var i GetRSSFavoritePostsOnlyForUserRow
+		if err := rows.Scan(
+			&i.Count,
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Channeltitle,
+			&i.Channelurl,
+			&i.Channeldescription,
+			&i.Channellanguage,
+			&i.Itemtitle,
+			&i.Itemdescription,
+			&i.ItempublishedAt,
+			&i.Itemurl,
+			&i.ImgUrl,
+			&i.FeedID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

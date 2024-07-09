@@ -151,6 +151,8 @@ func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, filters Filte
 	return rssPosts, metadata, nil
 }
 
+// CreateRssFeed() Is a scraper hooked function which will recieve all data scrapped
+// and will proceed to save it in the database.
 func (m RSSFeedDataModel) CreateRssFeedPost(rssFeed *RSSFeed, feedID *uuid.UUID) error {
 	// Get channel Info
 	ChannelTitle := rssFeed.Channel.Title
@@ -221,6 +223,9 @@ func (m RSSFeedDataModel) GetRSSFavoritePostsForUser(userID int64) ([]*RSSPostFa
 }
 
 // CreateRSSFavoritePost() will create a new RSS Favorite Post for a user
+//
+//	This method recieves the user's ID and the post ID and keeps track of which
+//	posts the user has favorited
 func (m RSSFeedDataModel) CreateRSSFavoritePost(userID int64, rssFavoritePost *RSSPostFavorite) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -248,8 +253,9 @@ func (m RSSFeedDataModel) CreateRSSFavoritePost(userID int64, rssFavoritePost *R
 	return nil
 }
 
-// DeleteRSSFavoritePost
 // DeleteRSSFavoritePost() will delete an RSS Favorite Post for a user
+// It will accept a user's ID and the post's ID that needs to be removed
+// from their favorites
 func (m RSSFeedDataModel) DeleteRSSFavoritePost(userID int64, rssFavoritePost *RSSPostFavorite) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -270,6 +276,53 @@ func (m RSSFeedDataModel) DeleteRSSFavoritePost(userID int64, rssFavoritePost *R
 		}
 	}
 	return nil
+}
+
+// This will get the RSS Favorite Posts for a user only, it gets the User ID and the filters
+// and returns a subset of all posts followed by a user
+func (m RSSFeedDataModel) GetRSSFavoritePostsOnlyForUser(userID int64, filters Filters) ([]*RSSFeed, Metadata, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	rssFeedPosts, err := m.DB.GetRSSFavoritePostsOnlyForUser(ctx, database.GetRSSFavoritePostsOnlyForUserParams{
+		UserID: userID,
+		Limit:  int32(filters.limit()),
+		Offset: int32(filters.offset()),
+	})
+	//check for an error
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	// make a totals and favoritePosts variables to hold the results
+	totalRecords := 0
+	favoritePosts := []*RSSFeed{}
+	var metadata Metadata
+	for _, row := range rssFeedPosts {
+		var rssPost RSSFeed
+		totalRecords = int(row.Count)
+		// General infor
+		rssPost.ID = row.ID
+		rssPost.Createdat = row.CreatedAt
+		rssPost.Updatedat = row.UpdatedAt
+		rssPost.Feed_ID = row.FeedID
+		// Channel info
+		rssPost.Channel.Title = row.Channeltitle
+		rssPost.Channel.Description = row.Channeldescription.String
+		rssPost.Channel.Link = row.Channelurl.String
+		rssPost.Channel.Language = row.Channellanguage.String
+		// Item Info
+		rssPost.Channel.Item = append(rssPost.Channel.Item, RSSItem{
+			Title:       row.Itemtitle,
+			Link:        row.Itemurl,
+			Description: row.Itemdescription.String,
+			PubDate:     row.ItempublishedAt.String(),
+			ImageURL:    row.ImgUrl,
+		})
+		//append our feed to the final slice
+		metadata = calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+		favoritePosts = append(favoritePosts, &rssPost)
+	}
+	return favoritePosts, metadata, nil
 }
 
 // =======================================================================================================================

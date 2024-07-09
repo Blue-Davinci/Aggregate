@@ -188,6 +188,7 @@ go run ./cmd/api
 Below are all the end points for the API and a high level description of what they do.
 
 1. **GET /v1/healthcheck:** Checks the health of the application. Returns a 200 OK status code if the application is running correctly.
+
 2. **POST /v1/users:** Registers a new user.
 
 3. **PUT /v1/users/activated:** Activates a user.
@@ -220,11 +221,10 @@ Below are all the end points for the API and a high level description of what th
 16. **POST /feeds/favorites:** Add a new favorite post
 
 17. **DELETE /feeds/favorites:** Deletes/Remove a favorited post
--------------------------------------------------------------------------------------------
 
-- **Manual Token request:** To Be added, for password manual token activation request
-- **Favorites:** Allow a user to see all their favorited posts.
+18. **GET /feeds/favorites/post:** Gets detailed post infor for only favorited posts i.e Can see any favorited content
 
+<hr />
 
 ## 🔧 Running the tests <a name = "tests"></a>
 
@@ -236,7 +236,8 @@ Each test file contains a myriad of tests to run on various entities mainly func
 The test files are organized into `structs of tests` and their corresponding test logic.
 
 You can run them directly from the vscode test UI. Below represents test results for the scraper:
-```
+
+```bash
 === RUN   Test_application_rssFeedScraper
 === RUN   Test_application_rssFeedScraper/Test1
 Fetching:  bbc
@@ -333,3 +334,4 @@ This sparked the idea to create a unified platform where all our favorite feeds 
 
 - [Go Documentation](https://golang.org/doc/): Official Go documentation and tutorials.
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/): Official PostgreSQL documentation.
+- [SQLC Documentation](https://docs.sqlc.dev/en/latest/): Official SQLC documentation and guides.

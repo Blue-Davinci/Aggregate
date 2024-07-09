@@ -37,3 +37,27 @@ RETURNING *;
 -- name: DeleteRSSFavoritePost :exec
 DELETE FROM postfavorites
 WHERE post_id = $1 AND user_id = $2;
+
+-- name: GetRSSFavoritePostsOnlyForUser :many
+SELECT count(*) OVER(),
+    p.id,
+    p.created_at,
+    p.updated_at,
+    p.channeltitle,
+    p.channelurl,
+    p.channeldescription,
+    p.channellanguage,
+    p.itemtitle,
+    p.itemdescription,
+    p.itempublished_at,
+    p.itemurl,
+    p.img_url,
+    p.feed_id
+FROM 
+    rssfeed_posts p
+JOIN 
+    postfavorites f ON p.id = f.post_id
+WHERE 
+    f.user_id = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3;

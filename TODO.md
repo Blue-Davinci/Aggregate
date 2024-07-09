@@ -7,5 +7,7 @@ This document outlines the tasks and features that are planned or need to be imp
 - **Features:**: 
                 - ~~Add password reset~~
                 - ~~Add a favorite feature for a specific post.~~
-                - Add Manual token request incase signup aut0-sending initially fails.
                 - ~~Alert and Notifications implimentations.~~
+                - ~~Add Favorites system where users can view all favorited content~~
+                - Add Manual token request incase signup aut0-sending initially fails.
+                - Add User Account + Settings endpoints
