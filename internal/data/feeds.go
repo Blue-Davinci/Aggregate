@@ -142,7 +142,7 @@ func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Fee
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 	return feeds, metadata, nil
 }
-func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, filters Filters) ([]*FeedFollow, Metadata, error) {
+func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, filters Filters) ([]*Feed, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -157,15 +157,20 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, filters Filters) ([]*
 		return nil, Metadata{}, err
 	}
 	totalRecords := 0
-	feedfollows := []*FeedFollow{}
+	feedfollows := []*Feed{}
 	for _, row := range rows {
-		var feedfollow FeedFollow
-		totalRecords = int(row.Count)
+		var feedfollow Feed
+		totalRecords = int(row.FollowCount)
 		feedfollow.ID = row.ID
 		feedfollow.CreatedAt = row.CreatedAt
 		feedfollow.UpdatedAt = row.UpdatedAt
-		feedfollow.FeedID = row.FeedID
+		feedfollow.Name = row.Name
+		feedfollow.Url = row.Url
+		feedfollow.Version = row.Version
 		feedfollow.UserID = row.UserID
+		feedfollow.ImgURL = row.ImgUrl
+		feedfollow.FeedType = row.FeedType
+		feedfollow.FeedDescription = row.FeedDescription
 		feedfollows = append(feedfollows, &feedfollow)
 	}
 	// Generate a Metadata struct, passing in the total record count and pagination

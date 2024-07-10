@@ -17,11 +17,14 @@ VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetAllFeedsFollowedByUser :many
-SELECT count(*) OVER(), id, created_at, updated_at, user_id, feed_id
-FROM feed_follows
-WHERE user_id = $1
-ORDER BY created_at DESC
+SELECT DISTINCT f.*, 
+       COUNT(*) OVER() AS follow_count
+FROM feeds f
+JOIN feed_follows ff ON f.id = ff.feed_id
+WHERE ff.user_id = $1
+ORDER BY f.id
 LIMIT $2 OFFSET $3;
+
 
 -- name: DeleteFeedFollow :exec
 DELETE FROM feed_follows

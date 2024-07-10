@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -179,10 +180,12 @@ func (q *Queries) GetAllFeeds(ctx context.Context, arg GetAllFeedsParams) ([]Get
 }
 
 const getAllFeedsFollowedByUser = `-- name: GetAllFeedsFollowedByUser :many
-SELECT count(*) OVER(), id, created_at, updated_at, user_id, feed_id
-FROM feed_follows
-WHERE user_id = $1
-ORDER BY created_at DESC
+SELECT DISTINCT f.id, f.created_at, f.updated_at, f.name, f.url, f.version, f.user_id, f.img_url, f.last_fetched_at, f.feed_type, f.feed_description, 
+       COUNT(*) OVER() AS follow_count
+FROM feeds f
+JOIN feed_follows ff ON f.id = ff.feed_id
+WHERE ff.user_id = $1
+ORDER BY f.id
 LIMIT $2 OFFSET $3
 `
 
@@ -193,12 +196,18 @@ type GetAllFeedsFollowedByUserParams struct {
 }
 
 type GetAllFeedsFollowedByUserRow struct {
-	Count     int64
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	UserID    int64
-	FeedID    uuid.UUID
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	Version         int32
+	UserID          int64
+	ImgUrl          string
+	LastFetchedAt   sql.NullTime
+	FeedType        string
+	FeedDescription string
+	FollowCount     int64
 }
 
 func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeedsFollowedByUserParams) ([]GetAllFeedsFollowedByUserRow, error) {
@@ -211,12 +220,18 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 	for rows.Next() {
 		var i GetAllFeedsFollowedByUserRow
 		if err := rows.Scan(
-			&i.Count,
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
+			&i.Url,
+			&i.Version,
 			&i.UserID,
-			&i.FeedID,
+			&i.ImgUrl,
+			&i.LastFetchedAt,
+			&i.FeedType,
+			&i.FeedDescription,
+			&i.FollowCount,
 		); err != nil {
 			return nil, err
 		}
