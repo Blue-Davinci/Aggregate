@@ -9,6 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// createFeedHandler() creates a new feed record in the database. It expects the request body to contain
+// a JSON object with the feed data. The handler reads the JSON data from the request body, validates it,
+// and then uses the Insert() method on the feedModel to insert the new feed record into the database.
 func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body to get the feed data
 	var input struct {
@@ -64,6 +67,9 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// getAllFeedsHandler() returns all the feeds that exist in our Database.
+// This endpoint also facilitates or supports pagination data. We have support
+// for name and URL queries as well as sorting, but still to impliment it.
 func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
 	var input struct {
@@ -103,6 +109,9 @@ func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// getTopFollowedFeedsHandler() gets the top 'x' followed feeds by grabbing the feed follows,
+// sorting, filtering and grabing the top 'x' feeds returning it as a TopFeed struct.
+// the default is 5 feeds, but a user can specify using the page_size query
 func (app *application) getTopFollowedFeedsHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
 	//
@@ -172,6 +181,7 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 	}
 }
 
+// deleteFeedFollowHandler deletes a feed follow record from the database.
 func (app *application) deleteFeedFollowHandler(w http.ResponseWriter, r *http.Request) {
 	//Read our data as parameters from the URL as it's a HTTP DELETE Request
 	feedfollowID, err := app.readIDParam(r, "feedID")
@@ -211,6 +221,9 @@ func (app *application) deleteFeedFollowHandler(w http.ResponseWriter, r *http.R
 	}
 }
 
+// createFeedFollowHandler creates a new feed follow record in the database. It expects the request body to contain
+// a JSON object with the feed data. The handler reads the JSON data from the request body, validates it,
+// and then uses the Insert() method on the feedModel to insert the new feed record into the database.
 func (app *application) createFeedFollowHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body to get the feed data
 	var input struct {
