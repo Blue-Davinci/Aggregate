@@ -111,10 +111,11 @@ goose postgres postgres://aggregate:password@localhost/aggregate  up
 
 7. **MakeFile Help:** For additional supported commands run `make help`:
 
-  ```bash
+  ```makefile
   make help
   ```
-  - **Output:**
+
+  **Output:**
   ```
   make help
   Usage: 
@@ -277,7 +278,7 @@ go run main.go
 
 This application can be deployed using Docker and Docker Compose. Here are the steps to do so:
 1. **Build the Docker image:** by navigating to the root directory.
-```
+```bash
 cd aggregate
 ```
 2. **Verify Configs:** Check and verify the following file incase you want to change any configs:
@@ -294,12 +295,12 @@ docker compose up --build
 Please remember you can use flags, mentioned [here](#optpars) while running the api by setting them in
 the `Dockerfile` like so:
 
-```
+```bash
 CMD ["./bin/api.exe", "-smtp-username", "smtp username", "-port", "your_port", "-smtp-password", "your_smtp_pass"]
 ```
 
-<b>Note:</b> <strong>There is a pre-built</strong> package for anyone who may feel <i>less enthusiastic</i> about building,
-it by themselves. You can get it by doing:
+<b>Note:</b> <strong>There is a pre-built</strong> package for anyone who may feel <i>less enthusiastic</i> about building
+it themselves. You can get it going by doing:
 
 ```bash
 docker pull ghcr.io/blue-davinci/aggregate:latest
