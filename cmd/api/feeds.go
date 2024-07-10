@@ -103,6 +103,40 @@ func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (app *application) getTopFollowedFeedsHandler(w http.ResponseWriter, r *http.Request) {
+	// make a struct to hold what we would want from the queries
+	//
+	var input struct {
+		data.Filters
+	}
+	//validate if queries are provided
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	//get the pagesizes as ints and set to the embedded struct
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 5, v)
+	// get the sort values falling back to "id" if it is not provided
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	// Add the supported sort values for this endpoint to the sort safelist.
+	input.Filters.SortSafelist = []string{"id", "-id"}
+	// Perform validation
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	topFollowedFeeds, err := app.models.Feeds.GetTopFollowedFeeds(input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Return the feeds in the response body
+	err = app.writeJSON(w, http.StatusOK, envelope{"top_followed_feeds": topFollowedFeeds}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // getAllFeedsFollowedHandler() GET /feeds/favorites, Returns the favorited feeds for the user
 func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries

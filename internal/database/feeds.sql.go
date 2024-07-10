@@ -287,6 +287,70 @@ func (q *Queries) GetNextFeedsToFetch(ctx context.Context, limit int32) ([]Feed,
 	return items, nil
 }
 
+const getTopFollowedFeeds = `-- name: GetTopFollowedFeeds :many
+SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.version, f.user_id, f.img_url, f.last_fetched_at, f.feed_type, f.feed_description, ff.follow_count
+FROM (
+    SELECT feed_id, COUNT(*) AS follow_count
+    FROM feed_follows
+    GROUP BY feed_id
+    ORDER BY follow_count DESC
+    LIMIT $1
+) AS ff
+JOIN feeds f ON f.id = ff.feed_id
+ORDER BY ff.follow_count DESC
+`
+
+type GetTopFollowedFeedsRow struct {
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	Version         int32
+	UserID          int64
+	ImgUrl          string
+	LastFetchedAt   sql.NullTime
+	FeedType        string
+	FeedDescription string
+	FollowCount     int64
+}
+
+func (q *Queries) GetTopFollowedFeeds(ctx context.Context, limit int32) ([]GetTopFollowedFeedsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopFollowedFeeds, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopFollowedFeedsRow
+	for rows.Next() {
+		var i GetTopFollowedFeedsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.Url,
+			&i.Version,
+			&i.UserID,
+			&i.ImgUrl,
+			&i.LastFetchedAt,
+			&i.FeedType,
+			&i.FeedDescription,
+			&i.FollowCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markFeedAsFetched = `-- name: MarkFeedAsFetched :one
 UPDATE feeds
 SET last_fetched_at = NOW(), updated_at = NOW()

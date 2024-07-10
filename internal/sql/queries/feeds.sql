@@ -41,3 +41,15 @@ UPDATE feeds
 SET last_fetched_at = NOW(), updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: GetTopFollowedFeeds :many
+SELECT f.*, ff.follow_count
+FROM (
+    SELECT feed_id, COUNT(*) AS follow_count
+    FROM feed_follows
+    GROUP BY feed_id
+    ORDER BY follow_count DESC
+    LIMIT $1
+) AS ff
+JOIN feeds f ON f.id = ff.feed_id
+ORDER BY ff.follow_count DESC;

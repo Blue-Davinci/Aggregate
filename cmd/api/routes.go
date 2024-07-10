@@ -30,6 +30,10 @@ func (app *application) routes() http.Handler {
 	v1Router := chi.NewRouter()
 	// Mounts general routes "home"
 	v1Router.With(dynamicMiddleware.Then).Mount("/", app.generalRoutes())
+	// The top routes will also need to be seperated when we add more, currently
+	// top feeds is there and will be available to anyone.
+	v1Router.Mount("/top", app.statisticRoutes())
+
 	v1Router.Mount("/users", app.userRoutes())
 	v1Router.Mount("/feeds", app.feedRoutes(&dynamicMiddleware))
 	v1Router.Mount("/api", app.apiKeyRoutes())
@@ -92,6 +96,12 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes.Get("/", app.getAllFeedsHandler)
 
 	return feedRoutes
+}
+
+func (app *application) statisticRoutes() chi.Router {
+	metricRoutes := chi.NewRouter()
+	metricRoutes.Get("/feeds", app.getTopFollowedFeedsHandler)
+	return metricRoutes
 }
 
 // apiKeyRoutes() provides a router for the /api API endpoint.

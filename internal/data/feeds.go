@@ -21,6 +21,17 @@ var (
 type FeedModel struct {
 	DB *database.Queries
 }
+
+// This struct will represent the Top fields and contains a Feed struct
+// and a Follow_Count field which will be used to represent the number of
+// followers a feed has.
+type TopFeeds struct {
+	Feed         Feed
+	Follow_Count int64
+}
+
+// The Feed struct Represents how our feed struct looks like and is the
+// primary model for the feed data.
 type Feed struct {
 	ID              uuid.UUID `json:"id"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -238,6 +249,39 @@ func (m FeedModel) DeleteFeedFollow(feedFollow *FeedFollow) error {
 		}
 	}
 	return nil
+}
+
+func (m FeedModel) GetTopFollowedFeeds(filters Filters) ([]*TopFeeds, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve our data
+	rows, err := m.DB.GetTopFollowedFeeds(ctx, int32(filters.limit()))
+	//check for an error
+	if err != nil {
+		return nil, err
+	}
+	//fmt.Println("Rows: ", rows)
+	topFeeds := []*TopFeeds{}
+	for _, row := range rows {
+		var topfeed TopFeeds
+		var feed Feed
+		feed.ID = row.ID
+		feed.CreatedAt = row.CreatedAt
+		feed.UpdatedAt = row.UpdatedAt
+		feed.Name = row.Name
+		feed.Url = row.Url
+		feed.Version = row.Version
+		feed.UserID = row.UserID
+		feed.ImgURL = row.ImgUrl
+		feed.FeedType = row.FeedType
+		feed.FeedDescription = row.FeedDescription
+		// attach the feed to the topfeed struct
+		topfeed.Feed = feed
+		topfeed.Follow_Count = row.FollowCount
+		topFeeds = append(topFeeds, &topfeed)
+	}
+	return topFeeds, nil
 }
 
 // The urlVerifier() helper function accepts a URL as a string and returns a boolean
