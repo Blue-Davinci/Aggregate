@@ -178,7 +178,7 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 		return
 	}
 	// Return the feeds in the response body
-	err = app.writeJSON(w, http.StatusOK, envelope{"feed_follows": feed_follows, "metadata": metadata}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feed_follows, "metadata": metadata}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

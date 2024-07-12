@@ -26,8 +26,8 @@ type FeedModel struct {
 // and a Follow_Count field which will be used to represent the number of
 // followers a feed has.
 type TopFeeds struct {
-	Feed         Feed
-	Follow_Count int64
+	Feed         Feed  `json:"feed"`
+	Follow_Count int64 `json:"follow_count"`
 }
 
 // This struct will unify the feeds returned providing space for the
@@ -36,8 +36,9 @@ type TopFeeds struct {
 // tabulation of feed follows and feeds setting hte isfollows dynamically
 // which would bring a big issue when scaled and data in the 1000s
 type FeedsWithFollows struct {
-	Feed       Feed
-	IsFollowed bool
+	Feed       Feed      `json:"feed"`
+	Follow_ID  uuid.UUID `json:"follow_id"`
+	IsFollowed bool      `json:"is_followed"`
 }
 
 // The Feed struct Represents how our feed struct looks like and is the
@@ -124,7 +125,7 @@ func (m FeedModel) Insert(feed *Feed) error {
 	return err
 }
 
-func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Feed, Metadata, error) {
+func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -141,8 +142,9 @@ func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Fee
 	}
 	//fmt.Println("Rows: ", rows)
 	totalRecords := 0
-	feeds := []*Feed{}
+	feeds := []*FeedsWithFollows{}
 	for _, row := range rows {
+		var feedWithFollow FeedsWithFollows
 		var feed Feed
 		totalRecords = int(row.Count)
 		feed.ID = row.ID
@@ -155,7 +157,14 @@ func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Fee
 		feed.ImgURL = row.ImgUrl
 		feed.FeedType = row.FeedType
 		feed.FeedDescription = row.FeedDescription
-		feeds = append(feeds, &feed)
+		// combine the data
+		// set to false by default since this is a general route and the u
+		feedWithFollow.IsFollowed = false
+		// also for clarity, set this to a nil UUID
+		feedWithFollow.Follow_ID = uuid.Nil
+		feedWithFollow.Feed = feed
+
+		feeds = append(feeds, &feedWithFollow)
 	}
 	// Generate a Metadata struct, passing in the total record count and pagination
 	// parameters from the client.
@@ -201,6 +210,8 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name string, filters 
 		feedfollow.FeedDescription = row.FeedDescription
 		// combine the data
 		feedWithFollow.Feed = feedfollow
+		// we set the UUID as a user will need this to unfollow a feed
+		feedWithFollow.Follow_ID = row.FollowID
 		feedWithFollow.IsFollowed = row.IsFollowed
 
 		feedWithFollows = append(feedWithFollows, &feedWithFollow)

@@ -59,12 +59,14 @@ SELECT
     f.feed_type, 
     f.feed_description, 
     COALESCE(ff.is_followed, false) AS is_followed,
+    ff.follow_id,
     COUNT(*) OVER() AS follow_count
 FROM 
     feeds f
 LEFT JOIN (
     SELECT 
         feed_id, 
+        id AS follow_id,
         true AS is_followed 
     FROM 
         feed_follows 
@@ -76,3 +78,4 @@ WHERE
 ORDER BY 
     f.created_at DESC
 LIMIT $3 OFFSET $4;
+

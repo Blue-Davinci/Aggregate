@@ -193,12 +193,14 @@ SELECT
     f.feed_type, 
     f.feed_description, 
     COALESCE(ff.is_followed, false) AS is_followed,
+    ff.follow_id,
     COUNT(*) OVER() AS follow_count
 FROM 
     feeds f
 LEFT JOIN (
     SELECT 
         feed_id, 
+        id AS follow_id,
         true AS is_followed 
     FROM 
         feed_follows 
@@ -232,6 +234,7 @@ type GetAllFeedsFollowedByUserRow struct {
 	FeedType        string
 	FeedDescription string
 	IsFollowed      bool
+	FollowID        uuid.UUID
 	FollowCount     int64
 }
 
@@ -262,6 +265,7 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 			&i.FeedType,
 			&i.FeedDescription,
 			&i.IsFollowed,
+			&i.FollowID,
 			&i.FollowCount,
 		); err != nil {
 			return nil, err

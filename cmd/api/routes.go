@@ -86,7 +86,7 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes.With(dynamicMiddleware.Then).Get("/favorites/posts", app.GetDetailedFavoriteRSSPosts)
 
 	// We need to change this to the unified method!
-	feedRoutes.With(dynamicMiddleware.Then).Get("/follow", app.getAllFeedsFollowedHandler)
+	feedRoutes.Get("/follow", app.getAllFeedsFollowedHandler)
 
 	feedRoutes.With(dynamicMiddleware.Then).Post("/follow", app.createFeedFollowHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/{feedID}", app.deleteFeedFollowHandler)
