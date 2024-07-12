@@ -205,11 +205,11 @@ Below are all the end points for the API and a high level description of what th
 
 8. **POST /feeds/follows:** Follow any feed for a user
 
-9. **GET /feeds/follow:** Get all feeds followed by a user
+9. **GET /feeds/follow:** Get all feeds followed by a user. <b>Supports pagination and search</b>.
 
 10. **DELETE /feeds/follow/{feed_id}:** Unfollow a followed feed
 
-11. **GET /feeds:** Get all Posts from scraped feeds that are followed by a user.
+11. **GET /feeds:** Get all Posts from scraped feeds that are followed by a user. Supports pagination and search.
 
 12. **POST /password-reset:** Initial request for password reset that sends a validation tokken
 
@@ -217,13 +217,15 @@ Below are all the end points for the API and a high level description of what th
 
 14. **GET /notifications:** Retrieve notifications on per user basis. Current implimentation supports <b>polling and on-demand basis</b>
 
-15. **GET /feeds/favorites:** Get favorite feeds for a user
+15. **GET /feeds/favorites:** Get favorite feeds for a user. <b>Supports pagination and search</b>.
 
 16. **POST /feeds/favorites:** Add a new favorite post
 
 17. **DELETE /feeds/favorites:** Deletes/Remove a favorited post
 
-18. **GET /feeds/favorites/post:** Gets detailed post infor for only favorited posts i.e Can see any favorited content
+18. **GET /feeds/favorites/post:** Gets detailed post infor for only favorited posts i.e Can see any favorited content. <b>Supports pagination and search</b>.
+
+19.  **GET /feeds/follow/list:** Gets the list of all feeds followed by a user.<b>Supports pagination and search</b>.
 
 <hr />
 
