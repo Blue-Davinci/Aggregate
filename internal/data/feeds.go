@@ -30,6 +30,16 @@ type TopFeeds struct {
 	Follow_Count int64
 }
 
+// This struct will unify the feeds returned providing space for the
+// IsFollowed member that will be used to show whether a user follows
+// A feed or not. This was necessary so as to get away from frontend
+// tabulation of feed follows and feeds setting hte isfollows dynamically
+// which would bring a big issue when scaled and data in the 1000s
+type FeedsWithFollows struct {
+	Feed       Feed
+	IsFollowed bool
+}
+
 // The Feed struct Represents how our feed struct looks like and is the
 // primary model for the feed data.
 type Feed struct {
@@ -153,23 +163,30 @@ func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Fee
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 	return feeds, metadata, nil
 }
-func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, filters Filters) ([]*Feed, Metadata, error) {
+
+// GetAllFeedsFollowedByUser() returns all feeds with an 'isFollowed' feed that tells the frontend
+// whether a feed is followed or not. It also takes in a search string: 'name' if available and searches
+// for a feed matching that, i found returns the items as well. We limit by a default of 30 no matter
+// whether something is being searched or there is no query.
+func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// retrieve our data
 	rows, err := m.DB.GetAllFeedsFollowedByUser(ctx, database.GetAllFeedsFollowedByUserParams{
-		UserID: userID,
-		Limit:  int32(filters.limit()),
-		Offset: int32(filters.offset()),
+		UserID:         userID,
+		PlaintoTsquery: name,
+		Limit:          int32(filters.limit()),
+		Offset:         int32(filters.offset()),
 	})
 	//check for an error
 	if err != nil {
 		return nil, Metadata{}, err
 	}
 	totalRecords := 0
-	feedfollows := []*Feed{}
+	feedWithFollows := []*FeedsWithFollows{}
 	for _, row := range rows {
+		var feedWithFollow FeedsWithFollows
 		var feedfollow Feed
 		totalRecords = int(row.FollowCount)
 		feedfollow.ID = row.ID
@@ -182,12 +199,16 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, filters Filters) ([]*
 		feedfollow.ImgURL = row.ImgUrl
 		feedfollow.FeedType = row.FeedType
 		feedfollow.FeedDescription = row.FeedDescription
-		feedfollows = append(feedfollows, &feedfollow)
+		// combine the data
+		feedWithFollow.Feed = feedfollow
+		feedWithFollow.IsFollowed = row.IsFollowed
+
+		feedWithFollows = append(feedWithFollows, &feedWithFollow)
 	}
 	// Generate a Metadata struct, passing in the total record count and pagination
 	// parameters from the client.
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
-	return feedfollows, metadata, nil
+	return feedWithFollows, metadata, nil
 }
 
 func (m FeedModel) CreateFeedFollow(feedfollow *FeedFollow) (*FeedFollow, error) {

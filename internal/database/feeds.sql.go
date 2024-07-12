@@ -180,19 +180,43 @@ func (q *Queries) GetAllFeeds(ctx context.Context, arg GetAllFeedsParams) ([]Get
 }
 
 const getAllFeedsFollowedByUser = `-- name: GetAllFeedsFollowedByUser :many
-SELECT DISTINCT f.id, f.created_at, f.updated_at, f.name, f.url, f.version, f.user_id, f.img_url, f.last_fetched_at, f.feed_type, f.feed_description, 
-       COUNT(*) OVER() AS follow_count
-FROM feeds f
-JOIN feed_follows ff ON f.id = ff.feed_id
-WHERE ff.user_id = $1
-ORDER BY f.id
-LIMIT $2 OFFSET $3
+SELECT 
+    f.id, 
+    f.created_at, 
+    f.updated_at, 
+    f.name, 
+    f.url, 
+    f.version, 
+    f.user_id, 
+    f.img_url, 
+    f.last_fetched_at, 
+    f.feed_type, 
+    f.feed_description, 
+    COALESCE(ff.is_followed, false) AS is_followed,
+    COUNT(*) OVER() AS follow_count
+FROM 
+    feeds f
+LEFT JOIN (
+    SELECT 
+        feed_id, 
+        true AS is_followed 
+    FROM 
+        feed_follows 
+    WHERE 
+        feed_follows.user_id = $1
+) ff ON f.id = ff.feed_id
+WHERE 
+    (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+ORDER BY 
+    f.created_at DESC
+LIMIT $3 OFFSET $4
 `
 
 type GetAllFeedsFollowedByUserParams struct {
-	UserID int64
-	Limit  int32
-	Offset int32
+	UserID         int64
+	PlaintoTsquery string
+	Limit          int32
+	Offset         int32
 }
 
 type GetAllFeedsFollowedByUserRow struct {
@@ -207,11 +231,17 @@ type GetAllFeedsFollowedByUserRow struct {
 	LastFetchedAt   sql.NullTime
 	FeedType        string
 	FeedDescription string
+	IsFollowed      bool
 	FollowCount     int64
 }
 
 func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeedsFollowedByUserParams) ([]GetAllFeedsFollowedByUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, getAllFeedsFollowedByUser, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, getAllFeedsFollowedByUser,
+		arg.UserID,
+		arg.PlaintoTsquery,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -231,6 +261,7 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 			&i.LastFetchedAt,
 			&i.FeedType,
 			&i.FeedDescription,
+			&i.IsFollowed,
 			&i.FollowCount,
 		); err != nil {
 			return nil, err

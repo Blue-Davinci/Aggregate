@@ -140,6 +140,7 @@ func (app *application) getTopFollowedFeedsHandler(w http.ResponseWriter, r *htt
 		return
 	}
 	// Return the feeds in the response body
+	app.logger.PrintInfo("Returning Top Followed Feeds", nil)
 	err = app.writeJSON(w, http.StatusOK, envelope{"top_followed_feeds": topFollowedFeeds}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -149,8 +150,9 @@ func (app *application) getTopFollowedFeedsHandler(w http.ResponseWriter, r *htt
 // getAllFeedsFollowedHandler() GET /feeds/favorites, Returns the favorited feeds for the user
 func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
-	//
+	//we also need a member for name for search queries
 	var input struct {
+		Name string
 		data.Filters
 	}
 	//validate if queries are provided
@@ -158,18 +160,19 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 	// Call r.URL.Query() to get the url.Values map containing the query string data.
 	qs := r.URL.Query()
 	//get the page & pagesizes as ints and set to the embedded struct
+	input.Name = app.readString(qs, "name", "")
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
 	// get the sort values falling back to "id" if it is not provided
-	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.Sort = app.readString(qs, "sort", "name")
 	// Add the supported sort values for this endpoint to the sort safelist.
-	input.Filters.SortSafelist = []string{"id", "name", "url", "-id", "-name", "-url"}
+	input.Filters.SortSafelist = []string{"name", "-name"}
 	// Perform validation
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	feed_follows, metadata, err := app.models.Feeds.GetAllFeedsFollowedByUser(app.contextGetUser(r).ID, input.Filters)
+	feed_follows, metadata, err := app.models.Feeds.GetAllFeedsFollowedByUser(app.contextGetUser(r).ID, input.Name, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

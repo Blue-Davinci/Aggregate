@@ -33,6 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_feeds_created_at ON feeds (created_at);
 -- Create index on last_fetched_at in feeds
 CREATE INDEX IF NOT EXISTS idx_feeds_last_fetched_at ON feeds (last_fetched_at);
 
+-- Create index for the name search in feeds
+CREATE INDEX idx_feeds_name_fulltext ON feeds USING GIN (to_tsvector('simple', name));
 
 -- +goose Down
 
@@ -68,3 +70,6 @@ DROP INDEX IF EXISTS idx_feeds_created_at;
 
 -- Drop index on last_fetched_at in feeds
 DROP INDEX IF EXISTS idx_feeds_last_fetched_at;
+
+-- Drop index on the name search in feeds
+DROP INDEX IF EXISTS idx_feeds_name_fulltext;

@@ -16,16 +16,6 @@ INSERT INTO feed_follows (id, created_at, updated_at, user_id, feed_id)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
--- name: GetAllFeedsFollowedByUser :many
-SELECT DISTINCT f.*, 
-       COUNT(*) OVER() AS follow_count
-FROM feeds f
-JOIN feed_follows ff ON f.id = ff.feed_id
-WHERE ff.user_id = $1
-ORDER BY f.id
-LIMIT $2 OFFSET $3;
-
-
 -- name: DeleteFeedFollow :exec
 DELETE FROM feed_follows
 WHERE id = $1 
@@ -53,3 +43,36 @@ FROM (
 ) AS ff
 JOIN feeds f ON f.id = ff.feed_id
 ORDER BY ff.follow_count DESC;
+
+
+-- name: GetAllFeedsFollowedByUser :many
+SELECT 
+    f.id, 
+    f.created_at, 
+    f.updated_at, 
+    f.name, 
+    f.url, 
+    f.version, 
+    f.user_id, 
+    f.img_url, 
+    f.last_fetched_at, 
+    f.feed_type, 
+    f.feed_description, 
+    COALESCE(ff.is_followed, false) AS is_followed,
+    COUNT(*) OVER() AS follow_count
+FROM 
+    feeds f
+LEFT JOIN (
+    SELECT 
+        feed_id, 
+        true AS is_followed 
+    FROM 
+        feed_follows 
+    WHERE 
+        feed_follows.user_id = $1
+) ff ON f.id = ff.feed_id
+WHERE 
+    (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+ORDER BY 
+    f.created_at DESC
+LIMIT $3 OFFSET $4;
