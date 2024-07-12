@@ -281,6 +281,83 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 	return items, nil
 }
 
+const getListOfFollowedFeeds = `-- name: GetListOfFollowedFeeds :many
+SELECT 
+    f.id, 
+    f.name, 
+    f.url, 
+    f.feed_type, 
+    f.created_at, 
+    f.updated_at, 
+    f.img_url,
+    COUNT(*) OVER() as total_count
+FROM 
+    feed_follows ff
+JOIN 
+    feeds f ON ff.feed_id = f.id
+WHERE 
+    ff.user_id = $1
+    AND (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+ORDER BY 
+    f.created_at DESC
+LIMIT $3 OFFSET $4
+`
+
+type GetListOfFollowedFeedsParams struct {
+	UserID         int64
+	PlaintoTsquery string
+	Limit          int32
+	Offset         int32
+}
+
+type GetListOfFollowedFeedsRow struct {
+	ID         uuid.UUID
+	Name       string
+	Url        string
+	FeedType   string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	ImgUrl     string
+	TotalCount int64
+}
+
+func (q *Queries) GetListOfFollowedFeeds(ctx context.Context, arg GetListOfFollowedFeedsParams) ([]GetListOfFollowedFeedsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getListOfFollowedFeeds,
+		arg.UserID,
+		arg.PlaintoTsquery,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetListOfFollowedFeedsRow
+	for rows.Next() {
+		var i GetListOfFollowedFeedsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Url,
+			&i.FeedType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ImgUrl,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNextFeedsToFetch = `-- name: GetNextFeedsToFetch :many
 SELECT id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description FROM feeds
 ORDER BY last_fetched_at ASC NULLS FIRST

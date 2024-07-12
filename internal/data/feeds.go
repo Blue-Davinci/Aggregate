@@ -55,12 +55,26 @@ type Feed struct {
 	FeedType        string    `json:"feed_type"`
 	FeedDescription string    `json:"feed_description"`
 }
+
+// This structs holds information on which feed is followed by which user
+// and is used to create a follow record in the database.
 type FeedFollow struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	FeedID    uuid.UUID `json:"feed_id"`
 	UserID    int64     `json:"user_id"`
+}
+
+// This struct will return the list of feeds followed by a user
+type FollowedUserFeeds struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Url       string    `json:"url"`
+	FeedType  string    `json:"feed_type"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	ImgURL    string    `json:"img_url"`
 }
 
 func ValidateFeed(v *validator.Validator, feed *Feed) {
@@ -281,6 +295,44 @@ func (m FeedModel) DeleteFeedFollow(feedFollow *FeedFollow) error {
 		}
 	}
 	return nil
+}
+
+// The GetListOfFollowedFeeds() method returns a list of feeds followed by a user directly
+// from the database. It also returns a metadata struct that contains the total records
+// and pagination parameters. This route supportd pagination and search via the feed's 'name' parameter.
+func (m FeedModel) GetListOfFollowedFeeds(userID int64, name string, filters Filters) ([]*FollowedUserFeeds, Metadata, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve our data
+	rows, err := m.DB.GetListOfFollowedFeeds(ctx, database.GetListOfFollowedFeedsParams{
+		UserID:         userID,
+		PlaintoTsquery: name,
+		Limit:          int32(filters.limit()),
+		Offset:         int32(filters.offset()),
+	})
+	//check for an error
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	totalRecords := 0
+	followedFeeds := []*FollowedUserFeeds{}
+	for _, row := range rows {
+		var followedFeed FollowedUserFeeds
+		totalRecords = int(row.TotalCount)
+		followedFeed.ID = row.ID
+		followedFeed.Name = row.Name
+		followedFeed.Url = row.Url
+		followedFeed.FeedType = row.FeedType
+		followedFeed.CreatedAt = row.CreatedAt
+		followedFeed.UpdatedAt = row.UpdatedAt
+		followedFeed.ImgURL = row.ImgUrl
+		followedFeeds = append(followedFeeds, &followedFeed)
+	}
+	// Generate a Metadata struct, passing in the total record count and pagination
+	// parameters from the client.
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	return followedFeeds, metadata, nil
 }
 
 func (m FeedModel) GetTopFollowedFeeds(filters Filters) ([]*TopFeeds, error) {

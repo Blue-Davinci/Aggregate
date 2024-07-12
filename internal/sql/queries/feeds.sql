@@ -79,3 +79,24 @@ ORDER BY
     f.created_at DESC
 LIMIT $3 OFFSET $4;
 
+-- name: GetListOfFollowedFeeds :many
+SELECT 
+    f.id, 
+    f.name, 
+    f.url, 
+    f.feed_type, 
+    f.created_at, 
+    f.updated_at, 
+    f.img_url,
+    COUNT(*) OVER() as total_count
+FROM 
+    feed_follows ff
+JOIN 
+    feeds f ON ff.feed_id = f.id
+WHERE 
+    ff.user_id = $1
+    AND (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+ORDER BY 
+    f.created_at DESC
+LIMIT $3 OFFSET $4;
+

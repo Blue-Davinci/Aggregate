@@ -109,6 +109,41 @@ func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (app *application) GetListOfFollowedFeedsHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Name string
+		data.Filters
+	}
+	//validate if queries are provided
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	//get the page & pagesizes as ints and set to the embedded struct
+	input.Name = app.readString(qs, "name", "")
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	// get the sort values falling back to "created_at" if it is not provided
+	input.Filters.Sort = app.readString(qs, "sort", "created_at")
+	// Add the supported sort values for this endpoint to the sort safelist.
+	input.Filters.SortSafelist = []string{"created_at", "-created_at"}
+	// Perform validation
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	feeds, metadata, err := app.models.Feeds.GetListOfFollowedFeeds(app.contextGetUser(r).ID, input.Name, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Return the feeds in the response body
+	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feeds, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
 // getTopFollowedFeedsHandler() gets the top 'x' followed feeds by grabbing the feed follows,
 // sorting, filtering and grabing the top 'x' feeds returning it as a TopFeed struct.
 // the default is 5 feeds, but a user can specify using the page_size query
