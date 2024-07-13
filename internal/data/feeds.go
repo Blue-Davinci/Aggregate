@@ -63,7 +63,7 @@ type FeedFollow struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	FeedID    uuid.UUID `json:"feed_id"`
-	UserID    int64     `json:"user_id"`
+	UserID    int64     `json:"-"`
 }
 
 // This struct will return the list of feeds followed by a user
@@ -259,9 +259,11 @@ func (m FeedModel) CreateFeedFollow(feedfollow *FeedFollow) (*FeedFollow, error)
 		}
 	}
 	// fill in additional information into our feed
-	feedfollow.ID = queryresult.FeedID
+	feedfollow.ID = queryresult.ID
 	feedfollow.CreatedAt = queryresult.CreatedAt
 	feedfollow.UpdatedAt = queryresult.UpdatedAt
+	feedfollow.UserID = queryresult.UserID
+	feedfollow.FeedID = queryresult.FeedID
 	//no logical error, thus return.
 	return feedfollow, nil
 }
