@@ -1,10 +1,9 @@
 package data
 
 import (
+	"github.com/blue-davinci/aggregate/internal/validator"
 	"math"
 	"strings"
-
-	"github.com/blue-davinci/aggregate/internal/validator"
 )
 
 // Define a new Metadata struct for holding the pagination metadata.

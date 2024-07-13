@@ -202,6 +202,7 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name string, filters 
 		Limit:          int32(filters.limit()),
 		Offset:         int32(filters.offset()),
 	})
+	//fmt.Println("Filters: ", filters)
 	//check for an error
 	if err != nil {
 		return nil, Metadata{}, err
