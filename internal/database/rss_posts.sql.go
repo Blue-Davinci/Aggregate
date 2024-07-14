@@ -131,21 +131,38 @@ func (q *Queries) DeleteRSSFavoritePost(ctx context.Context, arg DeleteRSSFavori
 }
 
 const getFollowedRssPostsForUser = `-- name: GetFollowedRssPostsForUser :many
-SELECT count(*) OVER(), rssfeed_posts.id, rssfeed_posts.created_at, rssfeed_posts.updated_at, rssfeed_posts.channeltitle, rssfeed_posts.channelurl, rssfeed_posts.channeldescription, rssfeed_posts.channellanguage, rssfeed_posts.itemtitle, rssfeed_posts.itemdescription, rssfeed_posts.itempublished_at, rssfeed_posts.itemurl, rssfeed_posts.img_url, rssfeed_posts.feed_id from rssfeed_posts
-JOIN feed_follows ON rssfeed_posts.feed_id = feed_follows.feed_id
-WHERE feed_follows.user_id = $1
-ORDER BY rssfeed_posts.itempublished_at DESC
-LIMIT $2 OFFSET $3
+SELECT 
+    p.id, p.created_at, p.updated_at, p.channeltitle, p.channelurl, p.channeldescription, p.channellanguage, p.itemtitle, p.itemdescription, p.itempublished_at, p.itemurl, p.img_url, p.feed_id, 
+    COALESCE(pf.is_favorite, false) AS is_favorite,
+    COUNT(*) OVER() AS total_count
+FROM 
+    rssfeed_posts p
+LEFT JOIN (
+    SELECT 
+        post_id,
+        true AS is_favorite
+    FROM 
+        postfavorites 
+    WHERE 
+        user_id = $1  -- Parameter 1: user_id
+) pf ON p.id = pf.post_id
+WHERE 
+    ($2 = '' OR to_tsvector('simple', p.itemtitle) @@ plainto_tsquery('simple', $2))  -- Parameter 2: itemtitle (full-text search for item title)
+    AND ($3::uuid = '00000000-0000-0000-0000-000000000000' OR p.feed_id = $3::uuid)  -- Parameter 3: feed_id (filter by feed_id if provided)
+ORDER BY 
+    p.created_at DESC
+LIMIT $4 OFFSET $5
 `
 
 type GetFollowedRssPostsForUserParams struct {
-	UserID int64
-	Limit  int32
-	Offset int32
+	UserID  int64
+	Column2 interface{}
+	Column3 uuid.UUID
+	Limit   int32
+	Offset  int32
 }
 
 type GetFollowedRssPostsForUserRow struct {
-	Count              int64
 	ID                 uuid.UUID
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
@@ -159,10 +176,18 @@ type GetFollowedRssPostsForUserRow struct {
 	Itemurl            string
 	ImgUrl             string
 	FeedID             uuid.UUID
+	IsFavorite         bool
+	TotalCount         int64
 }
 
 func (q *Queries) GetFollowedRssPostsForUser(ctx context.Context, arg GetFollowedRssPostsForUserParams) ([]GetFollowedRssPostsForUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, getFollowedRssPostsForUser, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, getFollowedRssPostsForUser,
+		arg.UserID,
+		arg.Column2,
+		arg.Column3,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +196,6 @@ func (q *Queries) GetFollowedRssPostsForUser(ctx context.Context, arg GetFollowe
 	for rows.Next() {
 		var i GetFollowedRssPostsForUserRow
 		if err := rows.Scan(
-			&i.Count,
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -185,6 +209,8 @@ func (q *Queries) GetFollowedRssPostsForUser(ctx context.Context, arg GetFollowe
 			&i.Itemurl,
 			&i.ImgUrl,
 			&i.FeedID,
+			&i.IsFavorite,
+			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}

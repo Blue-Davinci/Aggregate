@@ -36,6 +36,7 @@ func (app *application) routes() http.Handler {
 
 	v1Router.Mount("/users", app.userRoutes())
 	v1Router.Mount("/feeds", app.feedRoutes(&dynamicMiddleware))
+	v1Router.Mount("/search-options", app.searchOptionsRoutes(&dynamicMiddleware))
 	v1Router.Mount("/api", app.apiKeyRoutes())
 
 	// Mount to our base version
@@ -78,7 +79,7 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes := chi.NewRouter()
 	//authenticated/activated endpoints
 	feedRoutes.With(dynamicMiddleware.Then).Post("/", app.createFeedHandler)
-
+	// routes to get favorited posts, favorite and unfavorite posts as well.
 	feedRoutes.With(dynamicMiddleware.Then).Get("/favorites", app.GetRSSFavoritePostsForUserHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Post("/favorites", app.CreateRSSFavoritePostHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Delete("/favorites/{postID}", app.DeleteFavoritePostHandler)
@@ -96,6 +97,12 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes.Get("/", app.getAllFeedsHandler)
 
 	return feedRoutes
+}
+
+func (app *application) searchOptionsRoutes(dynamicMiddleware *alice.Chain) chi.Router {
+	searchOptionsRoutes := chi.NewRouter()
+	searchOptionsRoutes.With(dynamicMiddleware.Then).Get("/feeds", app.getFeedSearchOptionsHandler)
+	return searchOptionsRoutes
 }
 
 func (app *application) statisticRoutes() chi.Router {

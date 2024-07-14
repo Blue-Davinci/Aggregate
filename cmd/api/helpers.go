@@ -173,6 +173,15 @@ func (app *application) readIDParam(r *http.Request, parameterName string) (uuid
 	return feedID, nil
 }
 
+func (app *application) readIDFromQuery(r *http.Request, parameterName string) (uuid.UUID, error) {
+	idParam := r.URL.Query().Get(parameterName)
+	result, isValid := data.ValidateUUID(idParam)
+	if !isValid {
+		return uuid.Nil, errors.New("invalid id parameter")
+	}
+	return result, nil
+}
+
 // getEnvPath returns the path to the .env file based on the current working directory.
 func getEnvPath(logger *jsonlog.Logger) string {
 	dir, err := os.Getwd()

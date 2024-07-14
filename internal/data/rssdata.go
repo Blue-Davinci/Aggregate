@@ -40,6 +40,15 @@ var (
 type RSSFeedDataModel struct {
 	DB *database.Queries
 }
+
+// This is our main struct that is returned from our post endpoint and returns
+// posts with an isFavorite field
+type RSSFeedWithFavorite struct {
+	RSSFeed    *RSSFeed `json:"feed"`
+	IsFavorite bool     `json:"isFavorite"`
+}
+
+// RSSFeed is a struct that represents what our RSS Feed looks like
 type RSSFeed struct {
 	ID        uuid.UUID `json:"id"`
 	Createdat time.Time `json:"created_at"`
@@ -103,14 +112,22 @@ func (m RSSFeedDataModel) MarkFeedAsFetched(feed uuid.UUID) error {
 	return nil
 }
 
-func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, filters Filters) ([]*RSSFeed, Metadata, error) {
+// GetFollowedRssPostsForUser() is our main RSS Posts function that serves as both
+// the endpoint fir getting all posts and also for getting all posts filtered by the UUID
+// or searched by the itemtitle/post title
+// We return this as a slice of RSSFeed structs but with an isfavorite field
+// to show whether the post is in the user's favorites so that the frontend can set it
+// as a favorite or not
+func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, feed_name string, feed_id uuid.UUID, filters Filters) ([]*RSSFeedWithFavorite, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rssFeedPosts, err := m.DB.GetFollowedRssPostsForUser(ctx, database.GetFollowedRssPostsForUserParams{
-		UserID: userID,
-		Limit:  int32(filters.limit()),
-		Offset: int32(filters.offset()),
+		UserID:  userID,
+		Column2: feed_name,
+		Column3: feed_id,
+		Limit:   int32(filters.limit()),
+		Offset:  int32(filters.offset()),
 	})
 	//check for an error
 	if err != nil {
@@ -120,11 +137,13 @@ func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, filters Filte
 	var metadata Metadata
 	totalRecords := 0
 	// make a store for our processed feeds
-	rssPosts := []*RSSFeed{}
+	rssFeedWithFavorites := []*RSSFeedWithFavorite{}
 	for _, row := range rssFeedPosts {
-
+		// create a singly rss feed with favorite
+		var rssFeedWithFavorite RSSFeedWithFavorite
+		// create a single rss feed
 		var rssFeed RSSFeed
-		totalRecords = int(row.Count)
+		totalRecords = int(row.TotalCount)
 		// General infor
 		rssFeed.ID = row.ID
 		rssFeed.Createdat = row.CreatedAt
@@ -143,12 +162,15 @@ func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, filters Filte
 			PubDate:     row.ItempublishedAt.String(),
 			ImageURL:    row.ImgUrl,
 		})
+		// aggregate our data to the final struct
+		rssFeedWithFavorite.RSSFeed = &rssFeed
+		rssFeedWithFavorite.IsFavorite = row.IsFavorite
 		//append our feed to the final slice
 		metadata = calculateMetadata(totalRecords, filters.Page, filters.PageSize)
-		rssPosts = append(rssPosts, &rssFeed)
+		rssFeedWithFavorites = append(rssFeedWithFavorites, &rssFeedWithFavorite)
 	}
 
-	return rssPosts, metadata, nil
+	return rssFeedWithFavorites, metadata, nil
 }
 
 // CreateRssFeed() Is a scraper hooked function which will recieve all data scrapped

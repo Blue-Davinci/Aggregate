@@ -19,6 +19,7 @@ type Models struct {
 	Feeds         FeedModel
 	RSSFeedData   RSSFeedDataModel
 	Notifications NotificationsModel
+	SearchOptions SearchOptionsDataModel
 	//feed models
 }
 
@@ -30,5 +31,6 @@ func NewModels(db *database.Queries) Models {
 		Feeds:         FeedModel{DB: db},
 		RSSFeedData:   RSSFeedDataModel{DB: db},
 		Notifications: NotificationsModel{DB: db},
+		SearchOptions: SearchOptionsDataModel{DB: db},
 	}
 }

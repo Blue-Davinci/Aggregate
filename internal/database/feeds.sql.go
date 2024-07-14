@@ -281,6 +281,39 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 	return items, nil
 }
 
+const getFeedSearchOptions = `-- name: GetFeedSearchOptions :many
+SELECT DISTINCT id, name
+FROM feeds
+`
+
+type GetFeedSearchOptionsRow struct {
+	ID   uuid.UUID
+	Name string
+}
+
+func (q *Queries) GetFeedSearchOptions(ctx context.Context) ([]GetFeedSearchOptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedSearchOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedSearchOptionsRow
+	for rows.Next() {
+		var i GetFeedSearchOptionsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getListOfFollowedFeeds = `-- name: GetListOfFollowedFeeds :many
 SELECT 
     f.id, 

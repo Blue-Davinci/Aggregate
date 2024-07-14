@@ -113,14 +113,29 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 
 // Handler for out GetAllPost
 func (app *application) GetFollowedRssPostsForUserHandler(w http.ResponseWriter, r *http.Request) {
+	app.logger.PrintInfo("Getting Followed RSS Posts for User", nil)
 	// make a struct to hold what we would want from the queries
 	var input struct {
+		Name    string
+		Feed_ID uuid.UUID
 		data.Filters
 	}
 	//validate if queries are provided
 	v := validator.New()
 	// Call r.URL.Query() to get the url.Values map containing the query string data.
 	qs := r.URL.Query()
+	// get our parameters
+	input.Name = app.readString(qs, "name", "")      // get our name parameter
+	feed_id, err := app.readIDFromQuery(r, "feedID") // get our feed_id parameter
+	// if no FEED ID is provided, we expressly set it to nil so that our
+	// query identifies it as a nil value. Our app never gives a user nil
+	// uuid's so we can be sure that if we get a nil value, it is because
+	// the user did not provide a feed_id
+	if err != nil || feed_id == uuid.Nil {
+		input.Feed_ID = uuid.Nil
+	} else {
+		input.Feed_ID = feed_id
+	}
 	//get the page & pagesizes as ints and set to the embedded struct
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
@@ -134,7 +149,10 @@ func (app *application) GetFollowedRssPostsForUserHandler(w http.ResponseWriter,
 		return
 	}
 	// We are good, now we call our models getposts to get the rss posts
-	userRssFollowedPosts, metadata, err := app.models.RSSFeedData.GetFollowedRssPostsForUser(app.contextGetUser(r).ID, input.Filters)
+	userRssFollowedPosts, metadata, err := app.models.RSSFeedData.GetFollowedRssPostsForUser(app.contextGetUser(r).ID,
+		input.Name,
+		input.Feed_ID,
+		input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
