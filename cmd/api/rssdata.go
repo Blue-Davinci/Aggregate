@@ -294,17 +294,33 @@ func (app *application) DeleteFavoritePostHandler(w http.ResponseWriter, r *http
 // It is a GET request to /feeds/favorites/posts
 func (app *application) GetDetailedFavoriteRSSPosts(w http.ResponseWriter, r *http.Request) {
 	var input struct {
+		Name    string
+		Feed_ID uuid.UUID
 		data.Filters
 	}
+	//validate if queries are provided
 	v := validator.New()
 	// Call r.URL.Query() to get the url.Values map containing the query string data.
 	qs := r.URL.Query()
+	// get our parameters
+	input.Name = app.readString(qs, "name", "")      // get our name parameter
+	feed_id, err := app.readIDFromQuery(r, "feedID") // get our feed_id parameter
+	// if no FEED ID is provided, we expressly set it to nil so that our
+	// query identifies it as a nil value. Our app never gives a user nil
+	// uuid's so we can be sure that if we get a nil value, it is because
+	// the user did not provide a feed_id
+	if err != nil || feed_id == uuid.Nil {
+		input.Feed_ID = uuid.Nil
+	} else {
+		input.Feed_ID = feed_id
+	}
+	//get the page & pagesizes as ints and set to the embedded struct
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
-	// get the sort values falling back to "id" if it is not provided
-	input.Filters.Sort = app.readString(qs, "sort", "created_at")
-	// Add the supported sort values for this endpoint to the sort safelist.
-	input.Filters.SortSafelist = []string{"created_at", "-created_at"}
+	// We don't use any sort for this endpoint
+	input.Filters.Sort = app.readString(qs, "", "")
+	// None of the sort values are supported for this endpoint
+	input.Filters.SortSafelist = []string{"", ""}
 	// Perform validation
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
@@ -312,7 +328,7 @@ func (app *application) GetDetailedFavoriteRSSPosts(w http.ResponseWriter, r *ht
 	}
 	// get the data
 
-	favoritePosts, metadata, err := app.models.RSSFeedData.GetRSSFavoritePostsOnlyForUser(app.contextGetUser(r).ID, input.Filters)
+	favoritePosts, metadata, err := app.models.RSSFeedData.GetRSSFavoritePostsOnlyForUser(app.contextGetUser(r).ID, input.Name, input.Feed_ID, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

@@ -302,14 +302,16 @@ func (m RSSFeedDataModel) DeleteRSSFavoritePost(userID int64, rssFavoritePost *R
 
 // This will get the RSS Favorite Posts for a user only, it gets the User ID and the filters
 // and returns a subset of all posts followed by a user
-func (m RSSFeedDataModel) GetRSSFavoritePostsOnlyForUser(userID int64, filters Filters) ([]*RSSFeed, Metadata, error) {
+func (m RSSFeedDataModel) GetRSSFavoritePostsOnlyForUser(userID int64, feed_name string, feed_id uuid.UUID, filters Filters) ([]*RSSFeedWithFavorite, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rssFeedPosts, err := m.DB.GetRSSFavoritePostsOnlyForUser(ctx, database.GetRSSFavoritePostsOnlyForUserParams{
-		UserID: userID,
-		Limit:  int32(filters.limit()),
-		Offset: int32(filters.offset()),
+		UserID:  userID,
+		Column2: feed_name,
+		Column3: feed_id,
+		Limit:   int32(filters.limit()),
+		Offset:  int32(filters.offset()),
 	})
 	//check for an error
 	if err != nil {
@@ -317,11 +319,12 @@ func (m RSSFeedDataModel) GetRSSFavoritePostsOnlyForUser(userID int64, filters F
 	}
 	// make a totals and favoritePosts variables to hold the results
 	totalRecords := 0
-	favoritePosts := []*RSSFeed{}
+	favoritePosts := []*RSSFeedWithFavorite{}
 	var metadata Metadata
 	for _, row := range rssFeedPosts {
+		var favoritePost RSSFeedWithFavorite
 		var rssPost RSSFeed
-		totalRecords = int(row.Count)
+		totalRecords = int(row.TotalCount)
 		// General infor
 		rssPost.ID = row.ID
 		rssPost.Createdat = row.CreatedAt
@@ -340,9 +343,12 @@ func (m RSSFeedDataModel) GetRSSFavoritePostsOnlyForUser(userID int64, filters F
 			PubDate:     row.ItempublishedAt.String(),
 			ImageURL:    row.ImgUrl,
 		})
+		//Aggregate the data
+		favoritePost.RSSFeed = &rssPost
+		favoritePost.IsFavorite = row.IsFavorite
 		//append our feed to the final slice
 		metadata = calculateMetadata(totalRecords, filters.Page, filters.PageSize)
-		favoritePosts = append(favoritePosts, &rssPost)
+		favoritePosts = append(favoritePosts, &favoritePost)
 	}
 	return favoritePosts, metadata, nil
 }
