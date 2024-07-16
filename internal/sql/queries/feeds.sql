@@ -12,6 +12,7 @@ SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version,
 FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
 AND ($2 = '' OR url LIKE '%' || $2 || '%')
+AND is_hidden = FALSE
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4;
 
@@ -80,6 +81,7 @@ LEFT JOIN (
 ) ff ON f.id = ff.feed_id
 WHERE 
     (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+     AND (f.is_hidden = false OR f.user_id = $1)
 ORDER BY 
     f.created_at DESC
 LIMIT $3 OFFSET $4;

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
 	"time"
 
 	"github.com/blue-davinci/aggregate/internal/database"
@@ -94,6 +95,8 @@ func ValidateFeed(v *validator.Validator, feed *Feed) {
 	// feed description
 	v.Check(feed.FeedDescription != "", "feed description", "must be provided")
 	v.Check(len(feed.FeedDescription) <= 500, "feed description", "must not be more than 500 bytes long")
+	// is hidden
+	v.Check(reflect.TypeOf(feed.Is_Hidden).Kind() == reflect.Bool, "is hidden", "must provide a valid type")
 }
 
 func ValidateFeedFollow(v *validator.Validator, feedfollow *FeedFollow) {

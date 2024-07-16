@@ -20,6 +20,7 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 		ImgURL          string `json:"img_url"`
 		FeedType        string `json:"feed_type"`
 		FeedDescription string `json:"feed_description"`
+		Is_Hidden       bool   `json:"is_hidden"`
 	}
 	//Read our data into the input struct
 	err := app.readJSON(w, r, &input)
@@ -40,6 +41,7 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 		FeedType:        input.FeedType,
 		FeedDescription: input.FeedDescription,
 		UserID:          app.contextGetUser(r).ID,
+		Is_Hidden:       input.Is_Hidden,
 	}
 	// Initialize a new Validator.
 	v := validator.New()
