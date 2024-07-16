@@ -14,9 +14,9 @@ import (
 )
 
 const createFeed = `-- name: CreateFeed :one
-INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description) 
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description
+INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description, is_hidden) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden
 `
 
 type CreateFeedParams struct {
@@ -29,6 +29,7 @@ type CreateFeedParams struct {
 	ImgUrl          string
 	FeedType        string
 	FeedDescription string
+	IsHidden        bool
 }
 
 func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
@@ -42,6 +43,7 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		arg.ImgUrl,
 		arg.FeedType,
 		arg.FeedDescription,
+		arg.IsHidden,
 	)
 	var i Feed
 	err := row.Scan(
@@ -56,6 +58,7 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		&i.LastFetchedAt,
 		&i.FeedType,
 		&i.FeedDescription,
+		&i.IsHidden,
 	)
 	return i, err
 }
@@ -110,7 +113,7 @@ func (q *Queries) DeleteFeedFollow(ctx context.Context, arg DeleteFeedFollowPara
 }
 
 const getAllFeeds = `-- name: GetAllFeeds :many
-SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description
+SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
 FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
 AND ($2 = '' OR url LIKE '%' || $2 || '%')
@@ -137,6 +140,7 @@ type GetAllFeedsRow struct {
 	ImgUrl          string
 	FeedType        string
 	FeedDescription string
+	IsHidden        bool
 }
 
 func (q *Queries) GetAllFeeds(ctx context.Context, arg GetAllFeedsParams) ([]GetAllFeedsRow, error) {
@@ -165,6 +169,7 @@ func (q *Queries) GetAllFeeds(ctx context.Context, arg GetAllFeedsParams) ([]Get
 			&i.ImgUrl,
 			&i.FeedType,
 			&i.FeedDescription,
+			&i.IsHidden,
 		); err != nil {
 			return nil, err
 		}
@@ -192,6 +197,7 @@ SELECT
     f.last_fetched_at, 
     f.feed_type, 
     f.feed_description, 
+    f.is_hidden,
     COALESCE(ff.is_followed, false) AS is_followed,
     ff.follow_id,
     COUNT(*) OVER() AS follow_count
@@ -233,6 +239,7 @@ type GetAllFeedsFollowedByUserRow struct {
 	LastFetchedAt   sql.NullTime
 	FeedType        string
 	FeedDescription string
+	IsHidden        bool
 	IsFollowed      bool
 	FollowID        uuid.UUID
 	FollowCount     int64
@@ -264,6 +271,7 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 			&i.LastFetchedAt,
 			&i.FeedType,
 			&i.FeedDescription,
+			&i.IsHidden,
 			&i.IsFollowed,
 			&i.FollowID,
 			&i.FollowCount,
@@ -392,7 +400,7 @@ func (q *Queries) GetListOfFollowedFeeds(ctx context.Context, arg GetListOfFollo
 }
 
 const getNextFeedsToFetch = `-- name: GetNextFeedsToFetch :many
-SELECT id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description FROM feeds
+SELECT id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden FROM feeds
 ORDER BY last_fetched_at ASC NULLS FIRST
 LIMIT $1
 `
@@ -418,6 +426,7 @@ func (q *Queries) GetNextFeedsToFetch(ctx context.Context, limit int32) ([]Feed,
 			&i.LastFetchedAt,
 			&i.FeedType,
 			&i.FeedDescription,
+			&i.IsHidden,
 		); err != nil {
 			return nil, err
 		}
@@ -433,7 +442,7 @@ func (q *Queries) GetNextFeedsToFetch(ctx context.Context, limit int32) ([]Feed,
 }
 
 const getTopFollowedFeeds = `-- name: GetTopFollowedFeeds :many
-SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.version, f.user_id, f.img_url, f.last_fetched_at, f.feed_type, f.feed_description, ff.follow_count
+SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.version, f.user_id, f.img_url, f.last_fetched_at, f.feed_type, f.feed_description, f.is_hidden, ff.follow_count
 FROM (
     SELECT feed_id, COUNT(*) AS follow_count
     FROM feed_follows
@@ -457,6 +466,7 @@ type GetTopFollowedFeedsRow struct {
 	LastFetchedAt   sql.NullTime
 	FeedType        string
 	FeedDescription string
+	IsHidden        bool
 	FollowCount     int64
 }
 
@@ -481,6 +491,7 @@ func (q *Queries) GetTopFollowedFeeds(ctx context.Context, limit int32) ([]GetTo
 			&i.LastFetchedAt,
 			&i.FeedType,
 			&i.FeedDescription,
+			&i.IsHidden,
 			&i.FollowCount,
 		); err != nil {
 			return nil, err
@@ -500,7 +511,7 @@ const markFeedAsFetched = `-- name: MarkFeedAsFetched :one
 UPDATE feeds
 SET last_fetched_at = NOW(), updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description
+RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden
 `
 
 func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, error) {
@@ -518,6 +529,7 @@ func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, er
 		&i.LastFetchedAt,
 		&i.FeedType,
 		&i.FeedDescription,
+		&i.IsHidden,
 	)
 	return i, err
 }

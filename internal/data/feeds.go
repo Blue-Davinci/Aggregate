@@ -54,6 +54,7 @@ type Feed struct {
 	ImgURL          string    `json:"img_url"`
 	FeedType        string    `json:"feed_type"`
 	FeedDescription string    `json:"feed_description"`
+	Is_Hidden       bool      `json:"is_hidden"`
 }
 
 // This structs holds information on which feed is followed by which user
@@ -116,6 +117,7 @@ func (m FeedModel) Insert(feed *Feed) error {
 		ImgUrl:          feed.ImgURL,
 		FeedType:        feed.FeedType,
 		FeedDescription: feed.FeedDescription,
+		IsHidden:        feed.Is_Hidden,
 	})
 	// check for an error
 
@@ -171,6 +173,7 @@ func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Fee
 		feed.ImgURL = row.ImgUrl
 		feed.FeedType = row.FeedType
 		feed.FeedDescription = row.FeedDescription
+		feed.Is_Hidden = row.IsHidden
 		// combine the data
 		// set to false by default since this is a general route and the u
 		feedWithFollow.IsFollowed = false
@@ -223,6 +226,7 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name string, filters 
 		feedfollow.ImgURL = row.ImgUrl
 		feedfollow.FeedType = row.FeedType
 		feedfollow.FeedDescription = row.FeedDescription
+		feedfollow.Is_Hidden = row.IsHidden
 		// combine the data
 		feedWithFollow.Feed = feedfollow
 		// we set the UUID as a user will need this to unfollow a feed

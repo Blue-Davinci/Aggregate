@@ -30,6 +30,7 @@ type Feed struct {
 	LastFetchedAt   sql.NullTime
 	FeedType        string
 	FeedDescription string
+	IsHidden        bool
 }
 
 type FeedFollow struct {

@@ -3,12 +3,12 @@ SELECT DISTINCT id, name
 FROM feeds;
 
 -- name: CreateFeed :one
-INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description) 
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description, is_hidden) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
 RETURNING *;
 
 -- name: GetAllFeeds :many
-SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description
+SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
 FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
 AND ($2 = '' OR url LIKE '%' || $2 || '%')
@@ -62,6 +62,7 @@ SELECT
     f.last_fetched_at, 
     f.feed_type, 
     f.feed_description, 
+    f.is_hidden,
     COALESCE(ff.is_followed, false) AS is_followed,
     ff.follow_id,
     COUNT(*) OVER() AS follow_count
