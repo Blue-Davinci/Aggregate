@@ -1,3 +1,13 @@
+-- name: GetFeedById :one
+SELECT id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
+FROM feeds
+WHERE id = $1;
+
+-- name: UpdateFeed :exec
+UPDATE feeds
+SET updated_at = NOW(), name = $2, url = $3, version = version + 1, img_url = $4, feed_type = $5, feed_description = $6, is_hidden = $7
+WHERE id = $1 AND version = $8;
+
 -- name: GetFeedSearchOptions :many
 SELECT DISTINCT id, name
 FROM feeds;
@@ -107,3 +117,36 @@ ORDER BY
     f.created_at DESC
 LIMIT $3 OFFSET $4;
 
+-- name: GetFeedsCreatedByUser :many
+SELECT 
+    f.id, 
+    f.created_at, 
+    f.updated_at, 
+    f.name, 
+    f.url, 
+    f.version, 
+    f.user_id, 
+    f.img_url, 
+    f.last_fetched_at, 
+    f.feed_type, 
+    f.feed_description, 
+    f.is_hidden,
+    COALESCE(ff.follow_count, 0) AS follow_count,
+    COUNT(*) OVER() AS total_count
+FROM 
+    feeds f
+LEFT JOIN (
+    SELECT 
+        feed_id, 
+        COUNT(*) AS follow_count
+    FROM 
+        feed_follows
+    GROUP BY 
+        feed_id
+) ff ON f.id = ff.feed_id
+WHERE 
+    f.user_id = $1
+    AND (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+ORDER BY 
+    f.created_at DESC
+LIMIT $3 OFFSET $4;

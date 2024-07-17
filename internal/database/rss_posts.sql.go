@@ -236,7 +236,6 @@ func (q *Queries) GetFollowedRssPostsForUser(ctx context.Context, arg GetFollowe
 const getRSSFavoritePostsForUser = `-- name: GetRSSFavoritePostsForUser :many
 
 
-
 SELECT id, post_id, feed_id, user_id, created_at
 FROM postfavorites
 WHERE user_id = $1

@@ -42,6 +42,14 @@ type FeedsWithFollows struct {
 	IsFollowed bool      `json:"is_followed"`
 }
 
+// This struct will be used to represent the feeds created by a user
+// and will be used to return the feeds created by a user and the number
+// of followers each feed has.
+type FeedsCreatedByUser struct {
+	Feed         Feed  `json:"feed"`
+	Follow_Count int64 `json:"follow_count"`
+}
+
 // The Feed struct Represents how our feed struct looks like and is the
 // primary model for the feed data.
 type Feed struct {
@@ -103,6 +111,63 @@ func ValidateFeedFollow(v *validator.Validator, feedfollow *FeedFollow) {
 	_, isvalid := ValidateUUID(feedfollow.ID.String())
 	v.Check(feedfollow.ID != uuid.Nil, "feed id", "must be provided")
 	v.Check(isvalid, "feed id", "must be a valid UUID")
+}
+
+// The GetFeedByID() method accepts a UUID and returns a pointer to a Feed struct
+func (m FeedModel) GetFeedByID(feedID uuid.UUID) (*Feed, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	row, err := m.DB.GetFeedById(ctx, feedID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	var feed Feed
+	feed.ID = row.ID
+	feed.CreatedAt = row.CreatedAt
+	feed.UpdatedAt = row.UpdatedAt
+	feed.Name = row.Name
+	feed.Url = row.Url
+	feed.Version = row.Version
+	feed.UserID = row.UserID
+	feed.ImgURL = row.ImgUrl
+	feed.FeedType = row.FeedType
+	feed.FeedDescription = row.FeedDescription
+	feed.Is_Hidden = row.IsHidden
+	return &feed, nil
+}
+
+func (m FeedModel) UpdateFeed(feed *Feed) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// update the feed
+	err := m.DB.UpdateFeed(ctx, database.UpdateFeedParams{
+		ID:              feed.ID,
+		Name:            feed.Name,
+		Url:             feed.Url,
+		ImgUrl:          feed.ImgURL,
+		FeedType:        feed.FeedType,
+		FeedDescription: feed.FeedDescription,
+		IsHidden:        feed.Is_Hidden,
+		Version:         feed.Version,
+	})
+	// check for an error
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+	// clean. No error,
+	return nil
 }
 
 func (m FeedModel) Insert(feed *Feed) error {
@@ -242,6 +307,48 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name string, filters 
 	// parameters from the client.
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 	return feedWithFollows, metadata, nil
+}
+
+func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters Filters) ([]*FeedsCreatedByUser, Metadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve our data
+	rows, err := m.DB.GetFeedsCreatedByUser(ctx, database.GetFeedsCreatedByUserParams{
+		UserID:         userID,
+		PlaintoTsquery: name,
+		Limit:          int32(filters.limit()),
+		Offset:         int32(filters.offset()),
+	})
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	totalRecords := 0
+	feedCreatedByUsers := []*FeedsCreatedByUser{}
+	for _, row := range rows {
+		var createdFeed FeedsCreatedByUser
+		var feed Feed
+		totalRecords = int(row.TotalCount)
+		feed.ID = row.ID
+		feed.CreatedAt = row.CreatedAt
+		feed.UpdatedAt = row.UpdatedAt
+		feed.Name = row.Name
+		feed.Url = row.Url
+		feed.Version = row.Version
+		feed.UserID = row.UserID
+		feed.ImgURL = row.ImgUrl
+		feed.FeedType = row.FeedType
+		feed.FeedDescription = row.FeedDescription
+		feed.Is_Hidden = row.IsHidden
+		// combine the data
+		createdFeed.Feed = feed
+		createdFeed.Follow_Count = row.FollowCount
+
+		feedCreatedByUsers = append(feedCreatedByUsers, &createdFeed)
+	}
+	// Generate a Metadata struct, passing in the total record count and pagination
+	// parameters from the client.
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	return feedCreatedByUsers, metadata, nil
 }
 
 func (m FeedModel) CreateFeedFollow(feedfollow *FeedFollow) (*FeedFollow, error) {

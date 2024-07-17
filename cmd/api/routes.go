@@ -87,11 +87,14 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes.With(dynamicMiddleware.Then).Get("/favorites/posts", app.GetDetailedFavoriteRSSPosts)
 
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow", app.getAllFeedsFollowedHandler)
-	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/list", app.GetListOfFollowedFeedsHandler)
+	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/list", app.getListOfFollowedFeedsHandler)
 
 	feedRoutes.With(dynamicMiddleware.Then).Post("/follow", app.createFeedFollowHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/{feedID}", app.deleteFeedFollowHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts", app.GetFollowedRssPostsForUserHandler)
+
+	feedRoutes.With(dynamicMiddleware.Then).Get("/created", app.getFeedsCreatedByUserHandler)
+	feedRoutes.With(dynamicMiddleware.Then).Patch("/created/{feedID}", app.updateFeedHandler)
 
 	//A general route that will serve as one of the public endpoints/"Home"
 	feedRoutes.Get("/", app.getAllFeedsHandler)

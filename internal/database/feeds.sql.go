@@ -291,6 +291,45 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 	return items, nil
 }
 
+const getFeedById = `-- name: GetFeedById :one
+SELECT id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
+FROM feeds
+WHERE id = $1
+`
+
+type GetFeedByIdRow struct {
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	UserID          int64
+	Version         int32
+	ImgUrl          string
+	FeedType        string
+	FeedDescription string
+	IsHidden        bool
+}
+
+func (q *Queries) GetFeedById(ctx context.Context, id uuid.UUID) (GetFeedByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, getFeedById, id)
+	var i GetFeedByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.Version,
+		&i.ImgUrl,
+		&i.FeedType,
+		&i.FeedDescription,
+		&i.IsHidden,
+	)
+	return i, err
+}
+
 const getFeedSearchOptions = `-- name: GetFeedSearchOptions :many
 SELECT DISTINCT id, name
 FROM feeds
@@ -311,6 +350,108 @@ func (q *Queries) GetFeedSearchOptions(ctx context.Context) ([]GetFeedSearchOpti
 	for rows.Next() {
 		var i GetFeedSearchOptionsRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFeedsCreatedByUser = `-- name: GetFeedsCreatedByUser :many
+SELECT 
+    f.id, 
+    f.created_at, 
+    f.updated_at, 
+    f.name, 
+    f.url, 
+    f.version, 
+    f.user_id, 
+    f.img_url, 
+    f.last_fetched_at, 
+    f.feed_type, 
+    f.feed_description, 
+    f.is_hidden,
+    COALESCE(ff.follow_count, 0) AS follow_count,
+    COUNT(*) OVER() AS total_count
+FROM 
+    feeds f
+LEFT JOIN (
+    SELECT 
+        feed_id, 
+        COUNT(*) AS follow_count
+    FROM 
+        feed_follows
+    GROUP BY 
+        feed_id
+) ff ON f.id = ff.feed_id
+WHERE 
+    f.user_id = $1
+    AND (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+ORDER BY 
+    f.created_at DESC
+LIMIT $3 OFFSET $4
+`
+
+type GetFeedsCreatedByUserParams struct {
+	UserID         int64
+	PlaintoTsquery string
+	Limit          int32
+	Offset         int32
+}
+
+type GetFeedsCreatedByUserRow struct {
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	Version         int32
+	UserID          int64
+	ImgUrl          string
+	LastFetchedAt   sql.NullTime
+	FeedType        string
+	FeedDescription string
+	IsHidden        bool
+	FollowCount     int64
+	TotalCount      int64
+}
+
+func (q *Queries) GetFeedsCreatedByUser(ctx context.Context, arg GetFeedsCreatedByUserParams) ([]GetFeedsCreatedByUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedsCreatedByUser,
+		arg.UserID,
+		arg.PlaintoTsquery,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedsCreatedByUserRow
+	for rows.Next() {
+		var i GetFeedsCreatedByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.Url,
+			&i.Version,
+			&i.UserID,
+			&i.ImgUrl,
+			&i.LastFetchedAt,
+			&i.FeedType,
+			&i.FeedDescription,
+			&i.IsHidden,
+			&i.FollowCount,
+			&i.TotalCount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -534,4 +675,35 @@ func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, er
 		&i.IsHidden,
 	)
 	return i, err
+}
+
+const updateFeed = `-- name: UpdateFeed :exec
+UPDATE feeds
+SET updated_at = NOW(), name = $2, url = $3, version = version + 1, img_url = $4, feed_type = $5, feed_description = $6, is_hidden = $7
+WHERE id = $1 AND version = $8
+`
+
+type UpdateFeedParams struct {
+	ID              uuid.UUID
+	Name            string
+	Url             string
+	ImgUrl          string
+	FeedType        string
+	FeedDescription string
+	IsHidden        bool
+	Version         int32
+}
+
+func (q *Queries) UpdateFeed(ctx context.Context, arg UpdateFeedParams) error {
+	_, err := q.db.ExecContext(ctx, updateFeed,
+		arg.ID,
+		arg.Name,
+		arg.Url,
+		arg.ImgUrl,
+		arg.FeedType,
+		arg.FeedDescription,
+		arg.IsHidden,
+		arg.Version,
+	)
+	return err
 }
