@@ -206,7 +206,7 @@ func (m FeedModel) Insert(feed *Feed) error {
 
 	//fmt.Printf(">> Added a Feed With:\nID: %v\nUser ID: %d", feed.ID, feed.UserID)
 	// Return the error if any
-	return err
+	return nil
 }
 
 func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {

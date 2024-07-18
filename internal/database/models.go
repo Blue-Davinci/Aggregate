@@ -18,6 +18,16 @@ type ApiKey struct {
 	Scope  string
 }
 
+type Comment struct {
+	ID              uuid.UUID
+	PostID          uuid.UUID
+	UserID          int64
+	ParentCommentID uuid.NullUUID
+	CommentText     string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type Feed struct {
 	ID              uuid.UUID
 	CreatedAt       time.Time
