@@ -227,6 +227,14 @@ Below are all the end points for the API and a high level description of what th
 
 19.  **GET /feeds/follow/list:** Gets the list of all feeds followed by a user.<b>Supports pagination and search</b>.
 
+20. **GET /feeds/follow/posts/comments:** Gets all comments related to a specific post
+
+21. **POST /feeds/follow/posts/comments:** Post a comment from a user
+
+22. **PATCH /feeds/created/{}:** Feed Manager. Allows a user to edit a feed they created. Allows hiding and unhiding of created feeds.
+
+23. **GET /feeds/created:** Feed Manager. Get all feeds created by a user as well as related statistics such as follows and ratings.
+
 <hr />
 
 ## 🔧 Running the tests <a name = "tests"></a>
