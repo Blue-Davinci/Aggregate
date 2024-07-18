@@ -48,15 +48,24 @@ func (q *Queries) CreateComments(ctx context.Context, arg CreateCommentsParams) 
 }
 
 const getCommentsForPost = `-- name: GetCommentsForPost :many
-SELECT id, post_id, user_id, parent_comment_id, comment_text, created_at
+SELECT 
+    comments.id, 
+    comments.post_id, 
+    comments.user_id, 
+    users.name as user_name, 
+    comments.parent_comment_id, 
+    comments.comment_text, 
+    comments.created_at
 FROM comments
-WHERE post_id = $1
+JOIN users ON comments.user_id = users.id
+WHERE comments.post_id = $1
 `
 
 type GetCommentsForPostRow struct {
 	ID              uuid.UUID
 	PostID          uuid.UUID
 	UserID          int64
+	UserName        string
 	ParentCommentID uuid.NullUUID
 	CommentText     string
 	CreatedAt       time.Time
@@ -75,6 +84,7 @@ func (q *Queries) GetCommentsForPost(ctx context.Context, postID uuid.UUID) ([]G
 			&i.ID,
 			&i.PostID,
 			&i.UserID,
+			&i.UserName,
 			&i.ParentCommentID,
 			&i.CommentText,
 			&i.CreatedAt,

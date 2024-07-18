@@ -13,6 +13,15 @@ type CommentsModel struct {
 	DB *database.Queries
 }
 
+// This PostComment struct represent the data we will send back to the user
+// We include the username of the user who made the comment and the comment itself
+type PostComment struct {
+	Comment   Comment `json:"comment"`
+	User_Name string  `json:"user_name"`
+}
+
+// The Comment struct represents what our what our comments look like
+// We will recieve a comment from a user
 type Comment struct {
 	ID                uuid.UUID     `json:"id"`
 	Post_ID           uuid.UUID     `json:"post_id"`
@@ -59,7 +68,7 @@ func (m CommentsModel) CreateComment(comment *Comment) error {
 }
 
 // GetCommentsForPost() returns all comments for a specific post
-func (m CommentsModel) GetCommentsForPost(id uuid.UUID) ([]*Comment, error) {
+func (m CommentsModel) GetCommentsForPost(id uuid.UUID) ([]*PostComment, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -68,8 +77,9 @@ func (m CommentsModel) GetCommentsForPost(id uuid.UUID) ([]*Comment, error) {
 	if err != nil {
 		return nil, err
 	}
-	comments := []*Comment{}
+	comments := []*PostComment{}
 	for _, row := range rows {
+		var postComment PostComment
 		comment := &Comment{
 			ID:                row.ID,
 			Post_ID:           row.PostID,
@@ -78,7 +88,9 @@ func (m CommentsModel) GetCommentsForPost(id uuid.UUID) ([]*Comment, error) {
 			Comment_Text:      row.CommentText,
 			Created_At:        row.CreatedAt,
 		}
-		comments = append(comments, comment)
+		username := row.UserName
+		postComment = PostComment{Comment: *comment, User_Name: username}
+		comments = append(comments, &postComment)
 	}
 	return comments, nil
 }
