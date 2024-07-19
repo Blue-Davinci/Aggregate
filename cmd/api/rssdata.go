@@ -165,6 +165,42 @@ func (app *application) GetFollowedRssPostsForUserHandler(w http.ResponseWriter,
 
 }
 
+// getRSSFeedByIDHandler returns a single RSS Feed Post with favorite by its ID
+func (app *application) getRSSFeedByIDHandler(w http.ResponseWriter, r *http.Request) {
+	postIDValue, err := app.readIDParam(r, "postID")
+	if err != nil || postIDValue == uuid.Nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Create a new favorite post to read in the data
+	favoritePost := &data.RSSPostFavorite{
+		Post_ID: postIDValue,
+	}
+	// Initialize a new Validator.
+	v := validator.New()
+	if data.ValidatePostID(v, favoritePost); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	rssFeedPost, err := app.models.RSSFeedData.GetRSSFeedByID(app.contextGetUser(r).ID, postIDValue)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrPostNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Return the feeds in the response body
+	err = app.writeJSON(w, http.StatusOK, envelope{"rss_post": rssFeedPost}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
 // GetRSSFavoritePostsForUserHandler Gets all posts that have been marked as favorites by a user
 // This is a GET request to /feeds/favorites and passes through the user-id
 func (app *application) GetRSSFavoritePostsForUserHandler(w http.ResponseWriter, r *http.Request) {

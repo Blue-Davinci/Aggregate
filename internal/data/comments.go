@@ -63,7 +63,12 @@ func (m CommentsModel) CreateComment(comment *Comment) error {
 	// set additional details
 	comment.Created_At = queryresult.CreatedAt
 	comment.Updated_At = queryresult.UpdatedAt
-
+	// Nowwe need to save the comment notification
+	err = m.CreateCommentNotification(comment.User_ID, comment.ID, comment.Post_ID)
+	if err != nil {
+		return err
+	}
+	// we are good, hopefully no error.
 	return nil
 }
 
@@ -93,4 +98,22 @@ func (m CommentsModel) GetCommentsForPost(id uuid.UUID) ([]*PostComment, error) 
 		comments = append(comments, &postComment)
 	}
 	return comments, nil
+}
+
+// CreateCommentNotification() Creates a new comment notification in the database
+// This notification will be included back in our getnotification function.
+func (m CommentsModel) CreateCommentNotification(userID int64, commentID, postID uuid.UUID) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Insert the comment into the database
+	_, err := m.DB.CreateCommentNotification(ctx, database.CreateCommentNotificationParams{
+		UserID:    userID,
+		PostID:    postID,
+		CommentID: commentID,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -22,6 +22,41 @@ func (q *Queries) ClearNotifications(ctx context.Context, dollar_1 interface{}) 
 	return err
 }
 
+const createCommentNotification = `-- name: CreateCommentNotification :one
+INSERT INTO comment_notifications (user_id, post_id, comment_id)
+VALUES ($1, $2, $3)
+RETURNING id, comment_id, post_id, user_id, created_at
+`
+
+type CreateCommentNotificationParams struct {
+	UserID    int64
+	PostID    uuid.UUID
+	CommentID uuid.UUID
+}
+
+func (q *Queries) CreateCommentNotification(ctx context.Context, arg CreateCommentNotificationParams) (CommentNotification, error) {
+	row := q.db.QueryRowContext(ctx, createCommentNotification, arg.UserID, arg.PostID, arg.CommentID)
+	var i CommentNotification
+	err := row.Scan(
+		&i.ID,
+		&i.CommentID,
+		&i.PostID,
+		&i.UserID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const deleteReadCommentNotification = `-- name: DeleteReadCommentNotification :exec
+DELETE FROM comment_notifications
+WHERE id=$1
+`
+
+func (q *Queries) DeleteReadCommentNotification(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteReadCommentNotification, id)
+	return err
+}
+
 const fetchAndStoreNotifications = `-- name: FetchAndStoreNotifications :many
 SELECT
     f.id AS feed_id,
@@ -54,6 +89,91 @@ func (q *Queries) FetchAndStoreNotifications(ctx context.Context, dollar_1 inter
 	for rows.Next() {
 		var i FetchAndStoreNotificationsRow
 		if err := rows.Scan(&i.FeedID, &i.FeedName, &i.PostCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserCommentNotifications = `-- name: GetUserCommentNotifications :many
+(
+    -- Comment Notifications for Favorited Posts
+    SELECT
+        cn.id AS notification_id,
+        cn.post_id AS post_id,
+        'Comment on Favorited Post' AS notification_type,
+        c.id AS comment_id,
+        COALESCE(c.parent_comment_id, '00000000-0000-0000-0000-000000000000') AS replied_comment_id,
+        cn.created_at
+    FROM
+        comment_notifications cn
+    INNER JOIN
+        comments c ON cn.comment_id = c.id
+    WHERE
+        c.post_id IN (
+            SELECT pf.post_id
+            FROM postfavorites pf
+            WHERE pf.user_id = $1
+        )
+)
+UNION ALL
+(
+    -- Reply Notifications
+    SELECT
+        cn.id AS notification_id,
+        cn.post_id AS post_id,
+        'Reply to Your Comment' AS notification_type,
+        c.id AS comment_id,
+        COALESCE(c.parent_comment_id, '00000000-0000-0000-0000-000000000000') AS replied_comment_id,
+        cn.created_at
+    FROM
+        comment_notifications cn
+    INNER JOIN
+        comments c ON cn.comment_id = c.id
+    WHERE
+        c.parent_comment_id IN (
+            SELECT id
+            FROM comments
+            WHERE user_id = $1
+        )
+)
+ORDER BY
+    created_at DESC
+`
+
+type GetUserCommentNotificationsRow struct {
+	NotificationID   int32
+	PostID           uuid.UUID
+	NotificationType string
+	CommentID        uuid.UUID
+	RepliedCommentID uuid.UUID
+	CreatedAt        time.Time
+}
+
+func (q *Queries) GetUserCommentNotifications(ctx context.Context, userID int64) ([]GetUserCommentNotificationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserCommentNotifications, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserCommentNotificationsRow
+	for rows.Next() {
+		var i GetUserCommentNotificationsRow
+		if err := rows.Scan(
+			&i.NotificationID,
+			&i.PostID,
+			&i.NotificationType,
+			&i.CommentID,
+			&i.RepliedCommentID,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

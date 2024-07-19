@@ -173,6 +173,50 @@ func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, feed_name str
 	return rssFeedWithFavorites, metadata, nil
 }
 
+func (m RSSFeedDataModel) GetRSSFeedByID(userID int64, feedID uuid.UUID) (*RSSFeedWithFavorite, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// get our feed
+	feed, err := m.DB.GetRssPostByPostID(ctx, database.GetRssPostByPostIDParams{
+		UserID:  userID,
+		Column2: feedID,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrPostNotFound
+		default:
+			return nil, err
+		}
+	}
+	// create a singly rss feed with favorite
+	var rssFeedWithFavorite RSSFeedWithFavorite
+	// create a single rss feed
+	var rssFeed RSSFeed
+	// General infor
+	rssFeed.ID = feed.ID
+	rssFeed.Createdat = feed.CreatedAt
+	rssFeed.Updatedat = feed.UpdatedAt
+	rssFeed.Feed_ID = feed.FeedID
+	// Channel info
+	rssFeed.Channel.Title = feed.Channeltitle
+	rssFeed.Channel.Description = feed.Channeldescription.String
+	rssFeed.Channel.Link = feed.Channelurl.String
+	rssFeed.Channel.Language = feed.Channellanguage.String
+	// Item Info
+	rssFeed.Channel.Item = append(rssFeed.Channel.Item, RSSItem{
+		Title:       feed.Itemtitle,
+		Link:        feed.Itemurl,
+		Description: feed.Itemdescription.String,
+		PubDate:     feed.ItempublishedAt.String(),
+		ImageURL:    feed.ImgUrl,
+	})
+	// aggregate our data to the final struct
+	rssFeedWithFavorite.RSSFeed = &rssFeed
+	rssFeedWithFavorite.IsFavorite = feed.IsFavorite.(bool)
+	return &rssFeedWithFavorite, nil
+}
+
 // CreateRssFeed() Is a scraper hooked function which will recieve all data scrapped
 // and will proceed to save it in the database.
 func (m RSSFeedDataModel) CreateRssFeedPost(rssFeed *RSSFeed, feedID *uuid.UUID) error {

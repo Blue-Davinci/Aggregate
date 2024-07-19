@@ -28,6 +28,14 @@ type Comment struct {
 	UpdatedAt       time.Time
 }
 
+type CommentNotification struct {
+	ID        int32
+	CommentID uuid.UUID
+	PostID    uuid.UUID
+	UserID    int64
+	CreatedAt time.Time
+}
+
 type Feed struct {
 	ID              uuid.UUID
 	CreatedAt       time.Time

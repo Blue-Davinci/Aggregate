@@ -45,6 +45,8 @@ func (q *Queries) CreateRSSFavoritePost(ctx context.Context, arg CreateRSSFavori
 }
 
 const createRssFeedPost = `-- name: CreateRssFeedPost :one
+
+
 INSERT INTO rssfeed_posts (
     id, 
     created_at, 
@@ -80,6 +82,7 @@ type CreateRssFeedPostParams struct {
 	FeedID             uuid.UUID
 }
 
+// Parameter 2: post_id
 func (q *Queries) CreateRssFeedPost(ctx context.Context, arg CreateRssFeedPostParams) (RssfeedPost, error) {
 	row := q.db.QueryRowContext(ctx, createRssFeedPost,
 		arg.ID,
@@ -370,4 +373,72 @@ func (q *Queries) GetRSSFavoritePostsOnlyForUser(ctx context.Context, arg GetRSS
 		return nil, err
 	}
 	return items, nil
+}
+
+const getRssPostByPostID = `-- name: GetRssPostByPostID :one
+SELECT 
+    p.id,
+    p.created_at,
+    p.updated_at,
+    p.channeltitle,
+    p.channelurl,
+    p.channeldescription,
+    p.channellanguage,
+    p.itemtitle,
+    p.itemdescription,
+    p.itempublished_at,
+    p.itemurl,
+    p.img_url,
+    p.feed_id,
+    COALESCE(f.user_id IS NOT NULL, false) AS is_favorite
+FROM 
+    rssfeed_posts p
+LEFT JOIN 
+    postfavorites f ON p.id = f.post_id AND f.user_id = $1  -- Parameter 1: user_id
+WHERE 
+    p.id = $2::uuid
+`
+
+type GetRssPostByPostIDParams struct {
+	UserID  int64
+	Column2 uuid.UUID
+}
+
+type GetRssPostByPostIDRow struct {
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	Channeltitle       string
+	Channelurl         sql.NullString
+	Channeldescription sql.NullString
+	Channellanguage    sql.NullString
+	Itemtitle          string
+	Itemdescription    sql.NullString
+	ItempublishedAt    time.Time
+	Itemurl            string
+	ImgUrl             string
+	FeedID             uuid.UUID
+	IsFavorite         interface{}
+}
+
+func (q *Queries) GetRssPostByPostID(ctx context.Context, arg GetRssPostByPostIDParams) (GetRssPostByPostIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getRssPostByPostID, arg.UserID, arg.Column2)
+	var i GetRssPostByPostIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Channeltitle,
+		&i.Channelurl,
+		&i.Channeldescription,
+		&i.Channellanguage,
+		&i.Itemtitle,
+		&i.Itemdescription,
+		&i.ItempublishedAt,
+		&i.Itemurl,
+		&i.ImgUrl,
+		&i.FeedID,
+		&i.IsFavorite,
+	)
+	return i, err
 }

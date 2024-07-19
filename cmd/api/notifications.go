@@ -84,6 +84,24 @@ func (app *application) clearOldNotificationsHandler() {
 	app.logger.PrintInfo("Deleted old notifications", nil)
 }
 
+func (app *application) deleteReadCommentNotificationHandler(w http.ResponseWriter, r *http.Request) {
+	notificationID, err := app.readIDIntParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// we are okay now we proceed to delete the comment
+	err = app.models.Notifications.DeleteReadCommentNotification(notificationID)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Prepare a message
+	message := fmt.Sprintf("comment notification with ID %d deleted", notificationID)
+	// Return a 200 OK status code along with the deleted notification
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": message}, nil)
+}
+
 // getUserNotificationsHandler() is an endpoint function that retrieves all notifications
 // we expect an interval to be passed as a parameter eg: /notifications?interval=10
 // i[f none is passed, we default to the notifier-interval flag or the app.config.notifier.interval struct field]
@@ -119,10 +137,11 @@ func (app *application) getUserNotificationsHandler(w http.ResponseWriter, r *ht
 		app.logger.PrintError(err, nil)
 	}
 	app.logger.PrintInfo("Fetching user notifications", map[string]string{
-		"notifications total": fmt.Sprintf("%d", len(notifications)),
+		"notifications total":         fmt.Sprintf("%d", len(notifications.Notification)),
+		"comment notifications total": fmt.Sprintf("%d", len(notifications.CommentNotification)),
 	})
 	// Send the notifications to the client
-	err = app.writeJSON(w, http.StatusOK, envelope{"notifications": notifications}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"notification_group": notifications}, nil)
 	if err != nil {
 		app.logger.PrintError(err, nil)
 	}

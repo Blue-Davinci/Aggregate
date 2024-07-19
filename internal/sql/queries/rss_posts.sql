@@ -1,3 +1,27 @@
+-- name: GetRssPostByPostID :one
+SELECT 
+    p.id,
+    p.created_at,
+    p.updated_at,
+    p.channeltitle,
+    p.channelurl,
+    p.channeldescription,
+    p.channellanguage,
+    p.itemtitle,
+    p.itemdescription,
+    p.itempublished_at,
+    p.itemurl,
+    p.img_url,
+    p.feed_id,
+    COALESCE(f.user_id IS NOT NULL, false) AS is_favorite
+FROM 
+    rssfeed_posts p
+LEFT JOIN 
+    postfavorites f ON p.id = f.post_id AND f.user_id = $1  -- Parameter 1: user_id
+WHERE 
+    p.id = $2::uuid;  -- Parameter 2: post_id
+
+
 -- name: CreateRssFeedPost :one
 INSERT INTO rssfeed_posts (
     id, 
