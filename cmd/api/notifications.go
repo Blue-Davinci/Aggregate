@@ -100,6 +100,9 @@ func (app *application) deleteReadCommentNotificationHandler(w http.ResponseWrit
 	message := fmt.Sprintf("comment notification with ID %d deleted", notificationID)
 	// Return a 200 OK status code along with the deleted notification
 	err = app.writeJSON(w, http.StatusOK, envelope{"message": message}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
 
 // getUserNotificationsHandler() is an endpoint function that retrieves all notifications
