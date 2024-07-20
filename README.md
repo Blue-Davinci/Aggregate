@@ -235,6 +235,14 @@ Below are all the end points for the API and a high level description of what th
 
 23. **GET /feeds/created:** Feed Manager. Get all feeds created by a user as well as related statistics such as follows and ratings.
 
+24. **GET /follow/posts/comments/{postID}:** Get all comments for a particular post
+
+25. **DELETE /follow/posts/comments/{postID}:** Remove/clear a comment notification
+
+26. **POST /follow/posts/comments:** Add a comment to an existing post.
+
+27. **GET /follow/posts/{postID}:** Get the data around and on a specific rss feed post. Works in tandem with the share functionality.
+
 <hr />
 
 ## 🔧 Running the tests <a name = "tests"></a>
