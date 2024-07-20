@@ -54,11 +54,15 @@ RETURNING *;
         'Comment on Favorited Post' AS notification_type,
         c.id AS comment_id,
         COALESCE(c.parent_comment_id, '00000000-0000-0000-0000-000000000000') AS replied_comment_id,
+        LEFT(c.comment_text, 20) AS comment_snippet,
+        rp.itemtitle AS post_title,
         cn.created_at
     FROM
         comment_notifications cn
     INNER JOIN
         comments c ON cn.comment_id = c.id
+    INNER JOIN
+        rssfeed_posts rp ON c.post_id = rp.id
     WHERE
         c.post_id IN (
             SELECT pf.post_id
@@ -75,11 +79,15 @@ UNION ALL
         'Reply to Your Comment' AS notification_type,
         c.id AS comment_id,
         COALESCE(c.parent_comment_id, '00000000-0000-0000-0000-000000000000') AS replied_comment_id,
+        LEFT(c.comment_text, 20) AS comment_snippet,
+        rp.itemtitle AS post_title,
         cn.created_at
     FROM
         comment_notifications cn
     INNER JOIN
         comments c ON cn.comment_id = c.id
+    INNER JOIN
+        rssfeed_posts rp ON c.post_id = rp.id
     WHERE
         c.parent_comment_id IN (
             SELECT id
@@ -89,6 +97,7 @@ UNION ALL
 )
 ORDER BY
     created_at DESC;
+
 
 -- name: DeleteReadCommentNotification :exec
 DELETE FROM comment_notifications

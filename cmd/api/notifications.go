@@ -84,6 +84,8 @@ func (app *application) clearOldNotificationsHandler() {
 	app.logger.PrintInfo("Deleted old notifications", nil)
 }
 
+// deleteReadCommentNotificationHandler() is an endpoint function that deletes a read comment notification
+// we expect the notification ID to be passed as a parameter eg: DELETE /comments/1
 func (app *application) deleteReadCommentNotificationHandler(w http.ResponseWriter, r *http.Request) {
 	notificationID, err := app.readIDIntParam(r)
 	if err != nil {

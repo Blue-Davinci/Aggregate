@@ -30,11 +30,13 @@ type Notification struct {
 }
 
 type CommentNotification struct {
-	ID         int64     `json:"id"`
-	Comment_ID uuid.UUID `json:"comment_id"`
-	Post_ID    uuid.UUID `json:"post_id"`
-	User_ID    int64     `json:"user_id"`
-	Created_At time.Time `json:"created_at"`
+	ID               int64     `json:"id"`
+	Comment_ID       uuid.UUID `json:"comment_id"`
+	Post_ID          uuid.UUID `json:"post_id"`
+	User_ID          int64     `json:"user_id"`
+	Created_At       time.Time `json:"created_at"`
+	Comment_Snippet  string    `json:"comment_snippet"`
+	NotificationType string    `json:"notification_type"`
 }
 
 // FetchAndStoreNotifications() is the notifier's main function which
@@ -133,6 +135,8 @@ func (m *NotificationsModel) GetUserCommentNotifications(userID int64) ([]*Comme
 		commentnotification.Comment_ID = row.CommentID
 		commentnotification.User_ID = userID
 		commentnotification.Post_ID = row.PostID
+		commentnotification.NotificationType = row.NotificationType
+		commentnotification.Comment_Snippet = row.CommentSnippet
 		commentnotification.Created_At = row.CreatedAt
 		commentnotifications = append(commentnotifications, &commentnotification)
 	}
