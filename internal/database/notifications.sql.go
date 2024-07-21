@@ -49,11 +49,11 @@ func (q *Queries) CreateCommentNotification(ctx context.Context, arg CreateComme
 
 const deleteReadCommentNotification = `-- name: DeleteReadCommentNotification :exec
 DELETE FROM comment_notifications
-WHERE id=$1
+WHERE post_id=$1
 `
 
-func (q *Queries) DeleteReadCommentNotification(ctx context.Context, id int32) error {
-	_, err := q.db.ExecContext(ctx, deleteReadCommentNotification, id)
+func (q *Queries) DeleteReadCommentNotification(ctx context.Context, postID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteReadCommentNotification, postID)
 	return err
 }
 

@@ -101,4 +101,4 @@ ORDER BY
 
 -- name: DeleteReadCommentNotification :exec
 DELETE FROM comment_notifications
-WHERE id=$1;
+WHERE post_id=$1;

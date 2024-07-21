@@ -26,6 +26,7 @@ type Comment struct {
 	CommentText     string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	Version         int32
 }
 
 type CommentNotification struct {

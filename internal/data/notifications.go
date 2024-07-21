@@ -176,12 +176,13 @@ func (m *NotificationsModel) ClearOldNotifications(interval int64) error {
 }
 
 // DeleteReadCommentNotification() deletes a read comment notification from the database
-func (m *NotificationsModel) DeleteReadCommentNotification(notificationID int64) error {
+// we use the post_id over from the comment ID as comments can be soo many to remove one at a time
+func (m *NotificationsModel) DeleteReadCommentNotification(postID uuid.UUID) error {
 	// Create a new context with a 5 second timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// Delete the notification from the database
-	err := m.DB.DeleteReadCommentNotification(ctx, int32(notificationID))
+	err := m.DB.DeleteReadCommentNotification(ctx, postID)
 	if err != nil {
 		return err
 	}

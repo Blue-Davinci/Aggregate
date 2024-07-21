@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/blue-davinci/aggregate/internal/data"
@@ -56,6 +57,8 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// getCommentsForPostHandler retrieves all comments for a specific post based
+// on the posts Post ID
 func (app *application) getCommentsForPostHandler(w http.ResponseWriter, r *http.Request) {
 	//  Read our post ID as a parameter from the URL
 	postID, err := app.readIDParam(r, "postID")
@@ -70,13 +73,71 @@ func (app *application) getCommentsForPostHandler(w http.ResponseWriter, r *http
 		return
 	}
 	// Get all comments for the post
-	comments, err := app.models.Comments.GetCommentsForPost(postID)
+	comments, err := app.models.Comments.GetCommentsForPost(postID, app.contextGetUser(r).ID)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	// Return the comments
 	err = app.writeJSON(w, http.StatusOK, envelope{"comments": comments}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) updateUserCommentHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		ID           uuid.UUID `json:"id"`
+		Comment_Text string    `json:"comment_text"`
+		Version      int32     `json:"version"`
+	}
+	// Read our data
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// Create a new update comment
+	comment := &data.Comment{
+		ID:           input.ID,
+		Comment_Text: input.Comment_Text,
+		Version:      input.Version,
+	}
+	// validate the Comment ID and Comment text
+	v := validator.New()
+	if data.ValidateUpdateComment(v, comment); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Check if the comment exists
+	_, err = app.models.Comments.GetCommentByID(comment.ID, app.contextGetUser(r).ID)
+	// if there is an error, we check if it is a not found error
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrCommentNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Update the comment
+	version, err := app.models.Comments.UpdateUserComment(comment, app.contextGetUser(r).ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Return the comment with a 200 OK status code
+	err = app.writeJSON(w, http.StatusOK,
+		envelope{
+			"message": "comment updated successfully",
+			"version": version,
+		}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
