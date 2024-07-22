@@ -104,10 +104,8 @@ func (app *application) deleteReadCommentNotificationHandler(w http.ResponseWrit
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	// Prepare a message
-	message := fmt.Sprintf("comment notification with ID %d deleted", postID)
 	// Return a 200 OK status code along with the deleted notification
-	err = app.writeJSON(w, http.StatusOK, envelope{"message": message}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "comment notification succesfully deleted"}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

@@ -96,8 +96,10 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes.With(dynamicMiddleware.Then).Post("/follow/posts/comments", app.createCommentHandler)
 
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts/comments/{postID}", app.getCommentsForPostHandler)
-	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/posts/comments/{postID}", app.deleteReadCommentNotificationHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Patch("/follow/posts/comments", app.updateUserCommentHandler)
+	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/posts/comments/{commentID}", app.deleteCommentHandler)
+
+	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/posts/comments/notifications/{postID}", app.deleteReadCommentNotificationHandler)
 
 	feedRoutes.With(dynamicMiddleware.Then).Get("/created", app.getFeedsCreatedByUserHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Patch("/created/{feedID}", app.updateFeedHandler)

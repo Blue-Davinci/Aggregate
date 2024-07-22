@@ -48,6 +48,20 @@ func (q *Queries) CreateComments(ctx context.Context, arg CreateCommentsParams) 
 	return i, err
 }
 
+const deleteComment = `-- name: DeleteComment :exec
+DELETE FROM comments WHERE id = $1 AND user_id = $2
+`
+
+type DeleteCommentParams struct {
+	ID     uuid.UUID
+	UserID int64
+}
+
+func (q *Queries) DeleteComment(ctx context.Context, arg DeleteCommentParams) error {
+	_, err := q.db.ExecContext(ctx, deleteComment, arg.ID, arg.UserID)
+	return err
+}
+
 const getCommentByID = `-- name: GetCommentByID :one
 SELECT 
     id,

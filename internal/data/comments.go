@@ -84,6 +84,7 @@ func (m CommentsModel) CreateComment(comment *Comment) error {
 	// set additional details
 	comment.Created_At = queryresult.CreatedAt
 	comment.Updated_At = queryresult.UpdatedAt
+	comment.Version = queryresult.Version
 	// Nowwe need to save the comment notification
 	err = m.CreateCommentNotification(comment.User_ID, comment.ID, comment.Post_ID)
 	if err != nil {
@@ -93,6 +94,10 @@ func (m CommentsModel) CreateComment(comment *Comment) error {
 	return nil
 }
 
+// UpdateUserComment() updates a comment based on the updated comment text
+// as well as the user id and the version of the comment. This is to ensure
+// that the user is updating the correct comment.
+// We return the updated comment's version and an error if there is one.
 func (m CommentsModel) UpdateUserComment(comment *Comment, userID int64) (int32, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -114,6 +119,27 @@ func (m CommentsModel) UpdateUserComment(comment *Comment, userID int64) (int32,
 	return queryresult, nil
 }
 
+func (m CommentsModel) DeleteComment(commentID uuid.UUID, userID int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := m.DB.DeleteComment(ctx, database.DeleteCommentParams{
+		ID:     commentID,
+		UserID: userID,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrCommentNotFound
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+// GetCommentByID() returns a specific comment based on the comment id
+// Can be used in tandem with the update to check on whether a comment exists
+// before an update occurs. Returns a Comment.
 func (m CommentsModel) GetCommentByID(id uuid.UUID, userID int64) (*Comment, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -145,6 +171,8 @@ func (m CommentsModel) GetCommentByID(id uuid.UUID, userID int64) (*Comment, err
 }
 
 // GetCommentsForPost() returns all comments for a specific post
+// We return a PostComment which includes the comment and the username of the user
+// who made the comment. Helps the  frontend to do its thing.
 func (m CommentsModel) GetCommentsForPost(id uuid.UUID, userID int64) ([]*PostComment, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -183,7 +211,8 @@ func (m CommentsModel) CreateCommentNotification(userID int64, commentID, postID
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	// Insert the comment into the database
+	// Insert the comment into the database. We ignore the return as we really don't need it
+	// for this iterration of the app.
 	_, err := m.DB.CreateCommentNotification(ctx, database.CreateCommentNotificationParams{
 		UserID:    userID,
 		PostID:    postID,

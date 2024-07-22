@@ -85,6 +85,41 @@ func (app *application) getCommentsForPostHandler(w http.ResponseWriter, r *http
 	}
 }
 
+func (app *application) deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	commentID, err := app.readIDParam(r, "commentID")
+	//check whether there's an error or the feedID is invalid
+	if err != nil || commentID == uuid.Nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// quick validation
+	_, isValid := data.ValidateUUID(commentID.String())
+	if !isValid {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// Delete the comment
+	err = app.models.Comments.DeleteComment(commentID, app.contextGetUser(r).ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrCommentNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Return a 200 OK status code
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "comment deleted successfully"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
+// updateUserCommentHandler updates a comment taking in the ID, comment_text and version
+// We take in the version to ensure that the user is updating the correct comment and also
+// safeguard against race conditions if it may ever be an issue in the future.
 func (app *application) updateUserCommentHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		ID           uuid.UUID `json:"id"`
