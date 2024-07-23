@@ -26,7 +26,7 @@ func (q *Queries) DeletAllAPIKeysForUser(ctx context.Context, arg DeletAllAPIKey
 }
 
 const getForToken = `-- name: GetForToken :one
-SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
+SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version, users.user_img
 FROM users
 INNER JOIN api_keys
 ON users.id = api_keys.user_id
@@ -52,6 +52,7 @@ func (q *Queries) GetForToken(ctx context.Context, arg GetForTokenParams) (User,
 		&i.PasswordHash,
 		&i.Activated,
 		&i.Version,
+		&i.UserImg,
 	)
 	return i, err
 }

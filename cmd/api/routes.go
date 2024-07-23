@@ -34,7 +34,7 @@ func (app *application) routes() http.Handler {
 	// top feeds is there and will be available to anyone.
 	v1Router.Mount("/top", app.statisticRoutes())
 
-	v1Router.Mount("/users", app.userRoutes())
+	v1Router.Mount("/users", app.userRoutes(&dynamicMiddleware))
 	v1Router.Mount("/feeds", app.feedRoutes(&dynamicMiddleware))
 	v1Router.Mount("/search-options", app.searchOptionsRoutes(&dynamicMiddleware))
 	v1Router.Mount("/api", app.apiKeyRoutes())
@@ -61,14 +61,15 @@ func (app *application) generalRoutes() chi.Router {
 // userRoutes() provides a router for the /users API endpoint.
 // We pass the pointer to the dynamic middleware here because some
 // Of the routes require verified and activated users while some don't
-func (app *application) userRoutes() chi.Router {
+func (app *application) userRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	userRoutes := chi.NewRouter()
 	userRoutes.Post("/", app.registerUserHandler)
 	// /activation : for activating accounts
 	userRoutes.Put("/activated", app.activateUserHandler)
 	// **/password : for updating passwords.
 	userRoutes.Put("/password", app.updateUserPasswordHandler)
-	// /password-reset : for resetting passwords
+	// update user info. This will be a dynamically protected route.
+	userRoutes.With(dynamicMiddleware.Then).Patch("/", app.updateUserInformationHandler)
 	return userRoutes
 }
 

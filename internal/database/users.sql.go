@@ -42,7 +42,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, name, email, password_hash, activated, version
+SELECT id, created_at, name, email, password_hash, activated, version, user_img
 FROM users WHERE email = $1
 `
 
@@ -57,14 +57,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.PasswordHash,
 		&i.Activated,
 		&i.Version,
+		&i.UserImg,
 	)
 	return i, err
 }
 
 const update = `-- name: Update :one
 UPDATE users
-SET name = $1, email = $2, password_hash = $3, activated = $4, version = version + 1
-WHERE id = $5 AND version = $6
+SET name = $1, email = $2, password_hash = $3, activated = $4, version = version + 1, user_img=$5
+WHERE id = $6 AND version = $7
 RETURNING version
 `
 
@@ -73,6 +74,7 @@ type UpdateParams struct {
 	Email        string
 	PasswordHash []byte
 	Activated    bool
+	UserImg      string
 	ID           int64
 	Version      int32
 }
@@ -83,6 +85,7 @@ func (q *Queries) Update(ctx context.Context, arg UpdateParams) (int32, error) {
 		arg.Email,
 		arg.PasswordHash,
 		arg.Activated,
+		arg.UserImg,
 		arg.ID,
 		arg.Version,
 	)

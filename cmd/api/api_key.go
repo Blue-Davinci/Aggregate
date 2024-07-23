@@ -60,7 +60,10 @@ func (app *application) createAuthenticationApiKeyHandler(w http.ResponseWriter,
 		return
 	}
 	// Encode the apikey to json and send it to the user with a 201 Created status code
-	err = app.writeJSON(w, http.StatusCreated, envelope{"api_key": api_key}, nil)
+	err = app.writeJSON(w, http.StatusCreated, envelope{
+		"api_key": api_key,
+		"user":    user,
+	}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

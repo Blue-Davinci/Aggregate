@@ -75,11 +75,19 @@ type User struct {
 	Password  password  `json:"-"`
 	Activated bool      `json:"activated"`
 	Version   int       `json:"-"`
+	User_Img  string    `json:"user_img"`
 }
 
 func ValidateEmail(v *validator.Validator, email string) {
 	v.Check(email != "", "email", "must be provided")
 	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
+}
+func ValidateImageURL(v *validator.Validator, image_url string) {
+	v.Check(image_url != "", "image", "must be provided")
+}
+func ValidateName(v *validator.Validator, name string) {
+	v.Check(name != "", "email", "must be provided")
+	v.Check(len(name) <= 500, "name", "must not be more than 500 bytes long")
 }
 func ValidatePasswordPlaintext(v *validator.Validator, password string) {
 	v.Check(password != "", "password", "must be provided")
@@ -87,10 +95,12 @@ func ValidatePasswordPlaintext(v *validator.Validator, password string) {
 	v.Check(len(password) <= 72, "password", "must not be more than 72 bytes long")
 }
 func ValidateUser(v *validator.Validator, user *User) {
-	v.Check(user.Name != "", "name", "must be provided")
-	v.Check(len(user.Name) <= 500, "name", "must not be more than 500 bytes long")
+	// Call the standalone ValidateName() helper.
+	ValidateName(v, user.Name)
 	// Call the standalone ValidateEmail() helper.
 	ValidateEmail(v, user.Email)
+	// Validate Image
+	ValidateImageURL(v, user.User_Img)
 	// If the plaintext password is not nil, call the standalone
 	// ValidatePasswordPlaintext() helper.
 	if user.Password.plaintext != nil {
@@ -165,6 +175,7 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 		Password:  userPassword,
 		Activated: queryresult.Activated,
 		Version:   int(queryresult.Version),
+		User_Img:  queryresult.UserImg,
 	}
 	return &user, nil
 }
@@ -195,6 +206,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 		Password:  userPassword,
 		Activated: queryresult.Activated,
 		Version:   int(queryresult.Version),
+		User_Img:  queryresult.UserImg,
 	}
 	return user, nil
 }
@@ -210,6 +222,7 @@ func (m UserModel) Update(user *User) error {
 		Email:        user.Email,
 		PasswordHash: user.Password.hash,
 		Activated:    user.Activated,
+		UserImg:      user.User_Img,
 		Version:      int32(user.Version),
 		ID:           user.ID,
 	})
@@ -228,3 +241,5 @@ func (m UserModel) Update(user *User) error {
 	user.Version = int(queryresult)
 	return nil
 }
+
+// partial update for user name and user image

@@ -347,7 +347,7 @@ func (app *application) getFeedsCreatedByUserHandler(w http.ResponseWriter, r *h
 }
 
 func (app *application) updateFeedHandler(w http.ResponseWriter, r *http.Request) {
-	//Read our data as parameters from the URL as it's a HTTP DELETE Request
+	//Read our data as parameters from the URL as it's a HTTP PATCH Request
 	feedID, err := app.readIDParam(r, "feedID")
 	//check whether there's an error or the feedID is invalid
 	if err != nil || feedID == uuid.Nil {

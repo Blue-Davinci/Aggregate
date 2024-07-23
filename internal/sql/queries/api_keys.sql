@@ -8,7 +8,7 @@ DELETE FROM api_keys
 WHERE scope = $1 AND user_id = $2;
 
 -- name: GetForToken :one
-SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
+SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version, users.user_img
 FROM users
 INNER JOIN api_keys
 ON users.id = api_keys.user_id

@@ -228,3 +228,52 @@ func (app *application) updateUserPasswordHandler(w http.ResponseWriter, r *http
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+// updateUserInformation() will allow a user to update their name and avatar/image
+// This route also supports partial updates, so a user can update just their name or just their avatar/image.
+func (app *application) updateUserInformationHandler(w http.ResponseWriter, r *http.Request) {
+	// we won't be recieving anything in terms of parameters or queries so
+	// we proceed to read the user update info from the request body
+	// currently a user can only update their name and avatar/image
+	var input struct {
+		Name    *string `json:"name"`
+		Img_Url *string `json:"img_url"`
+	}
+	//lets get the user's details
+	user := app.contextGetUser(r)
+	// read the json from the request body
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// lets check if the user has provided a name or image url
+	if input.Name != nil {
+		user.Name = *input.Name
+	}
+	if input.Img_Url != nil {
+		user.User_Img = *input.Img_Url
+	}
+	// Perform validation on the user struct before saving the new user
+	v := validator.New()
+	if data.ValidateUser(v, user); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// update the user record in the database
+	err = app.models.Users.Update(user)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// If no error, then we confirm the update to the user
+	err = app.writeJSON(w, http.StatusOK, envelope{"user": user}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
