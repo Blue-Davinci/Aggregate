@@ -17,6 +17,7 @@ import (
 var (
 	ErrDuplicateFeed   = errors.New("duplicate feed")
 	ErrDuplicateFollow = errors.New("duplicate follow")
+	ErrConvertingTime  = errors.New("error converting avgTimeBetweenFeeds to sql.NullFloat64")
 )
 
 type FeedModel struct {
@@ -29,6 +30,18 @@ type FeedModel struct {
 type TopFeeds struct {
 	Feed         Feed  `json:"feed"`
 	Follow_Count int64 `json:"follow_count"`
+}
+
+// This struct will represent the Top Creators and contains a User struct
+// and the number of feeds created by the user and the total number of
+// followers, for each created feed, that the user has.
+type TopCreators struct {
+	User                       User    `json:"user"`
+	Total_Follows              int64   `json:"total_follows"`
+	Total_Likes                int64   `json:"total_likes"`
+	Total_Created_Feeds        int64   `json:"created_feeds"`
+	Average_Time_Between_Feeds float64 `json:"-"`
+	Creator_Score              float64 `json:"creator_score"`
 }
 
 // This struct will unify the feeds returned providing space for the
@@ -48,6 +61,15 @@ type FeedsWithFollows struct {
 type FeedsCreatedByUser struct {
 	Feed         Feed  `json:"feed"`
 	Follow_Count int64 `json:"follow_count"`
+}
+
+// This struct will be used when returning detailed information fo a specific
+// feed. we also include the creator's information as well as the number of
+// liked posts for a specific feed.
+type FeedWithStatsInfo struct {
+	Feed        Feed  `json:"feed"`
+	User        User  `json:"user"`
+	Liked_Count int64 `json:"liked_count"`
 }
 
 // The Feed struct Represents how our feed struct looks like and is the
@@ -111,6 +133,39 @@ func ValidateFeedFollow(v *validator.Validator, feedfollow *FeedFollow) {
 	_, isvalid := ValidateUUID(feedfollow.ID.String())
 	v.Check(feedfollow.ID != uuid.Nil, "feed id", "must be provided")
 	v.Check(isvalid, "feed id", "must be a valid UUID")
+}
+
+func (m FeedModel) GetFeedWithStats(feedID uuid.UUID) (*FeedWithStatsInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve the feed's information
+	feed, err := m.GetFeedByID(feedID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	// retrieve the user's and like count information
+	row, err := m.DB.GetFeedUserAndStatisticsByID(ctx, feedID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	// create our FeedWithStatsInfo struct
+	var feedWithStats FeedWithStatsInfo
+	feedWithStats.Feed = *feed
+	feedWithStats.User.Name = row.UserName
+	feedWithStats.User.User_Img = row.UserImgUrl
+	feedWithStats.Liked_Count = row.LikedPostsCount
+	// we're good, lets return the feed with stats
+	return &feedWithStats, nil
 }
 
 // The GetFeedByID() method accepts a UUID and returns a pointer to a Feed struct
@@ -450,6 +505,46 @@ func (m FeedModel) GetListOfFollowedFeeds(userID int64, name string, filters Fil
 	// parameters from the client.
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 	return followedFeeds, metadata, nil
+}
+
+// GetTopFeedCreators() returns the top feed creators based on the number of followers
+// This route allows for paginations and allows the users to also send a custom length
+// or rather pagesize for how many top individuals they need, the default is 5.
+func (m FeedModel) GetTopFeedCreators(filters Filters) ([]*TopCreators, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve our data
+	rows, err := m.DB.GetTopFeedCreators(ctx, database.GetTopFeedCreatorsParams{
+		Limit:  int32(filters.limit()),
+		Offset: int32(filters.offset()),
+	})
+	//check for an error
+	if err != nil {
+		return nil, err
+	}
+	topCreators := []*TopCreators{}
+	for _, row := range rows {
+		var topCreator TopCreators
+		// attach the user to the topcreator struct
+		topCreator.User = User{
+			Name:     row.Name.String,
+			User_Img: row.UserImg.String,
+		}
+		topCreator.Total_Follows = row.TotalFollows
+		topCreator.Total_Likes = row.TotalLikes.Int64
+		topCreator.Total_Created_Feeds = row.TotalCreatedFeeds.Int64
+		avgTimeBetweenFeeds, ok := row.AvgTimeBetweenFeeds.(float64)
+		if !ok {
+			return nil, ErrConvertingTime
+		}
+		topCreator.Average_Time_Between_Feeds = avgTimeBetweenFeeds
+		// calculate the creator score
+		topCreator.Creator_Score = m.scoreCalculationAlgorithm(&topCreator)
+		// append the topcreator to the topcreators slice
+		topCreators = append(topCreators, &topCreator)
+	}
+	return topCreators, nil
 }
 
 func (m FeedModel) GetTopFollowedFeeds(filters Filters) ([]*TopFeeds, error) {

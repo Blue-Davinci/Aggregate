@@ -147,6 +147,38 @@ func (app *application) getListOfFollowedFeedsHandler(w http.ResponseWriter, r *
 
 }
 
+func (app *application) getTopFeedCreatorsHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		data.Filters
+	}
+	//validate if queries are provided
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	//get the pagesizes as ints and set to the embedded struct
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 5, v)
+	// get the sort values falling back to "id" if it is not provided
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	// Add the supported sort values for this endpoint to the sort safelist.
+	input.Filters.SortSafelist = []string{"id", "-id"}
+	// Perform validation
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	topFeedCreators, err := app.models.Feeds.GetTopFeedCreators(input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Return the feeds in the response body
+	err = app.writeJSON(w, http.StatusOK, envelope{"top_feed_creators": topFeedCreators}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // getTopFollowedFeedsHandler() gets the top 'x' followed feeds by grabbing the feed follows,
 // sorting, filtering and grabing the top 'x' feeds returning it as a TopFeed struct.
 // the default is 5 feeds, but a user can specify using the page_size query
@@ -217,6 +249,40 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 	}
 	// Return the feeds in the response body
 	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feed_follows, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+func (app *application) getFeedWithStatsHandler(w http.ResponseWriter, r *http.Request) {
+	//Read our data as parameters from the URL as it's a HTTP DELETE Request
+	feedfollowID, err := app.readIDParam(r, "feedID")
+	//check whether there's an error or the feedID is invalid
+	if err != nil || feedfollowID == uuid.Nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// we will use the feedfollow verification as we are verifying the same thing
+	feedfollow := &data.FeedFollow{
+		ID: feedfollowID,
+	}
+	v := validator.New()
+	if data.ValidateFeedFollow(v, feedfollow); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// call our model to get the feed
+	feedWithStats, err := app.models.Feeds.GetFeedWithStats(feedfollowID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Return the feeds in the response body
+	err = app.writeJSON(w, http.StatusOK, envelope{"feed": feedWithStats}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

@@ -73,7 +73,7 @@ type User struct {
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`
 	Password  password  `json:"-"`
-	Activated bool      `json:"activated"`
+	Activated bool      `json:"-"`
 	Version   int       `json:"-"`
 	User_Img  string    `json:"user_img"`
 }

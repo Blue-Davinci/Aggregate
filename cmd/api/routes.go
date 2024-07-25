@@ -107,6 +107,7 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 
 	//A general route that will serve as one of the public endpoints/"Home"
 	feedRoutes.Get("/", app.getAllFeedsHandler)
+	feedRoutes.Get("/{feedID}", app.getFeedWithStatsHandler)
 
 	return feedRoutes
 }
@@ -120,6 +121,7 @@ func (app *application) searchOptionsRoutes(dynamicMiddleware *alice.Chain) chi.
 func (app *application) statisticRoutes() chi.Router {
 	metricRoutes := chi.NewRouter()
 	metricRoutes.Get("/feeds", app.getTopFollowedFeedsHandler)
+	metricRoutes.Get("/creators", app.getTopFeedCreatorsHandler)
 	return metricRoutes
 }
 
