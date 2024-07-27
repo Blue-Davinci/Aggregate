@@ -30,6 +30,7 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 - [Getting Started](#getting_started)
 - [Deployment](#deployment)
 - [Usage](#usage)
+- [Algo](#algo)
 - [Built Using](#built_using)
 - [API Endpoints](#endpoints)
 - [TODO](./TODO.md)
@@ -243,6 +244,10 @@ Below are all the end points for the API and a high level description of what th
 
 27. **GET /follow/posts/{postID}:** Get the data around and on a specific rss feed post. Works in tandem with the share functionality.
 
+28. **GET /feeds/sample-posts/{feedID}:** Get sample random posts for specified posts to demonstrate a "taste" of what they look like.
+
+29. **GET /top/creators:** Get the top x users of the API. it uses an algorithm explained in this readme.
+
 <hr />
 
 ## 🔧 Running the tests <a name = "tests"></a>
@@ -291,6 +296,45 @@ make build/api ## build api using the makefile
 Direct Run: 
 go run main.go
 ```
+
+## 🧩 Algo <a name = "algo"></a>
+We calculte the score for each user a bit differently. Although v1 was a simplefeed follows and creation division,
+we moved and now the algo looks like this:
+\[ \text{score} = \frac{\text{total feeds}}{\sum (\text{follows} \times w_f \times e^{-\lambda t_f} + \text{likes} \times w_l \times e^{-\lambda t_l})} \times 100 \]
+
+Where:
+
+- \( w_f \) = weight for follows (e.g., 1.0)
+- \( w_l \) = weight for likes (e.g., 0.5)
+- \( t_f \) = time since follow (in days)
+- \( t_l \) = time since like (in days)
+- \( \lambda \) = decay constant (controls how fast the weight decreases over time, e.g., 0.01)
+
+An **example** would look like this: 
+### Example Calculation
+
+**User X:**
+- Total Follows: 100
+- Total Likes: 50
+- Total Created Feeds: 10
+- Average Time Between Feeds: 30 days
+
+**Engagement Score:**
+
+\[ \text{Engagement Score} = (100 \times 0.7) + (50 \times 0.3) = 70 + 15 = 85 \]
+
+**Consistency Score:**
+
+\[ \text{Consistency Score} = \frac{10}{30} = 0.33 \]
+
+(normalize to 0-100 range: \( 0.33 \times 100 = 33 \))
+
+**Final Score:**
+
+\[ \text{Final Score} = (85 \times 0.8) + (33 \times 0.2) = 68 + 6.6 = 74.6 \]
+
+Please feel free to edit or add to it, Will probably factor in user comments and replies to the above algo
+in version 3.
 
 ## 🚀 Deployment <a name = "deployment"></a>
 

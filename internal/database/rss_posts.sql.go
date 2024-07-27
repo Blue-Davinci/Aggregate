@@ -47,6 +47,7 @@ func (q *Queries) CreateRSSFavoritePost(ctx context.Context, arg CreateRSSFavori
 const createRssFeedPost = `-- name: CreateRssFeedPost :one
 
 
+
 INSERT INTO rssfeed_posts (
     id, 
     created_at, 
@@ -375,6 +376,57 @@ func (q *Queries) GetRSSFavoritePostsOnlyForUser(ctx context.Context, arg GetRSS
 	return items, nil
 }
 
+const getRandomRSSPosts = `-- name: GetRandomRSSPosts :many
+SELECT id, created_at, updated_at, channeltitle, channelurl, channeldescription, channellanguage, itemtitle, itemdescription, itempublished_at, itemurl, img_url, feed_id
+FROM rssfeed_posts
+WHERE feed_id = $1
+ORDER BY RANDOM()
+LIMIT $2 OFFSET $3
+`
+
+type GetRandomRSSPostsParams struct {
+	FeedID uuid.UUID
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetRandomRSSPosts(ctx context.Context, arg GetRandomRSSPostsParams) ([]RssfeedPost, error) {
+	rows, err := q.db.QueryContext(ctx, getRandomRSSPosts, arg.FeedID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RssfeedPost
+	for rows.Next() {
+		var i RssfeedPost
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Channeltitle,
+			&i.Channelurl,
+			&i.Channeldescription,
+			&i.Channellanguage,
+			&i.Itemtitle,
+			&i.Itemdescription,
+			&i.ItempublishedAt,
+			&i.Itemurl,
+			&i.ImgUrl,
+			&i.FeedID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRssPostByPostID = `-- name: GetRssPostByPostID :one
 SELECT 
     p.id,
@@ -390,11 +442,14 @@ SELECT
     p.itemurl,
     p.img_url,
     p.feed_id,
-    COALESCE(f.user_id IS NOT NULL, false) AS is_favorite
+    COALESCE(f.user_id IS NOT NULL, false) AS is_favorite,
+    COALESCE(ff.user_id IS NOT NULL, false) AS is_followed_feed
 FROM 
     rssfeed_posts p
 LEFT JOIN 
-    postfavorites f ON p.id = f.post_id AND f.user_id = $1  -- Parameter 1: user_id
+    postfavorites f ON p.id = f.post_id AND f.user_id = $1
+LEFT JOIN
+    feed_follows ff ON p.feed_id = ff.feed_id AND ff.user_id = $1
 WHERE 
     p.id = $2::uuid
 `
@@ -419,6 +474,7 @@ type GetRssPostByPostIDRow struct {
 	ImgUrl             string
 	FeedID             uuid.UUID
 	IsFavorite         interface{}
+	IsFollowedFeed     interface{}
 }
 
 func (q *Queries) GetRssPostByPostID(ctx context.Context, arg GetRssPostByPostIDParams) (GetRssPostByPostIDRow, error) {
@@ -439,6 +495,7 @@ func (q *Queries) GetRssPostByPostID(ctx context.Context, arg GetRssPostByPostID
 		&i.ImgUrl,
 		&i.FeedID,
 		&i.IsFavorite,
+		&i.IsFollowedFeed,
 	)
 	return i, err
 }

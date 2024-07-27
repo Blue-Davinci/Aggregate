@@ -13,13 +13,17 @@ SELECT
     p.itemurl,
     p.img_url,
     p.feed_id,
-    COALESCE(f.user_id IS NOT NULL, false) AS is_favorite
+    COALESCE(f.user_id IS NOT NULL, false) AS is_favorite,
+    COALESCE(ff.user_id IS NOT NULL, false) AS is_followed_feed
 FROM 
     rssfeed_posts p
 LEFT JOIN 
-    postfavorites f ON p.id = f.post_id AND f.user_id = $1  -- Parameter 1: user_id
+    postfavorites f ON p.id = f.post_id AND f.user_id = $1
+LEFT JOIN
+    feed_follows ff ON p.feed_id = ff.feed_id AND ff.user_id = $1
 WHERE 
     p.id = $2::uuid;  -- Parameter 2: post_id
+
 
 
 -- name: CreateRssFeedPost :one
@@ -114,4 +118,11 @@ WHERE
     AND ($3::uuid = '00000000-0000-0000-0000-000000000000' OR p.feed_id = $3::uuid)  -- Parameter 3: feed_id (filter by feed_id if provided)
 ORDER BY 
     p.created_at DESC
-LIMIT $4 OFFSET $5;  -- Parameters 4 and 5: limit and offset
+LIMIT $4 OFFSET $5; 
+
+-- name: GetRandomRSSPosts :many
+SELECT *
+FROM rssfeed_posts
+WHERE feed_id = $1
+ORDER BY RANDOM()
+LIMIT $2 OFFSET $3;

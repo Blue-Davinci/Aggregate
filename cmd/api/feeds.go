@@ -253,6 +253,8 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+// getFeedWithStatsHandler() returns a feed with additional statistics
 func (app *application) getFeedWithStatsHandler(w http.ResponseWriter, r *http.Request) {
 	//Read our data as parameters from the URL as it's a HTTP DELETE Request
 	feedfollowID, err := app.readIDParam(r, "feedID")

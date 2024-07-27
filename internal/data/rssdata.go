@@ -46,6 +46,7 @@ type RSSFeedDataModel struct {
 type RSSFeedWithFavorite struct {
 	RSSFeed    *RSSFeed `json:"feed"`
 	IsFavorite bool     `json:"isFavorite"`
+	IsFollowed bool     `json:"isFollowed"`
 }
 
 // RSSFeed is a struct that represents what our RSS Feed looks like
@@ -173,6 +174,8 @@ func (m RSSFeedDataModel) GetFollowedRssPostsForUser(userID int64, feed_name str
 	return rssFeedWithFavorites, metadata, nil
 }
 
+// We need to add isFollowe to the return item so that a user can know if it was
+// followed or not incase a user clicks on a shared item
 func (m RSSFeedDataModel) GetRSSFeedByID(userID int64, feedID uuid.UUID) (*RSSFeedWithFavorite, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -212,8 +215,12 @@ func (m RSSFeedDataModel) GetRSSFeedByID(userID int64, feedID uuid.UUID) (*RSSFe
 		ImageURL:    feed.ImgUrl,
 	})
 	// aggregate our data to the final struct
+	// we ad an isFollowed on this one so that if a user gets a url and has sees the post
+	// this will allow the frontend to know if it should give the user the option to follow the feed
+	// or rather suggest to the user to follow the feed responsible for the post.
 	rssFeedWithFavorite.RSSFeed = &rssFeed
 	rssFeedWithFavorite.IsFavorite = feed.IsFavorite.(bool)
+	rssFeedWithFavorite.IsFollowed = feed.IsFollowedFeed.(bool)
 	return &rssFeedWithFavorite, nil
 }
 
@@ -342,6 +349,47 @@ func (m RSSFeedDataModel) DeleteRSSFavoritePost(userID int64, rssFavoritePost *R
 		}
 	}
 	return nil
+}
+
+// GetRandomRSSPosts Will return a small subset of information about posts for non-registered users
+// It doesn not contain all information, it will only have very little information enough to wet
+// their appettite.
+func (m RSSFeedDataModel) GetRandomRSSPosts(feedID uuid.UUID, filters Filters) ([]*RSSFeed, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	rssFeedPosts, err := m.DB.GetRandomRSSPosts(ctx, database.GetRandomRSSPostsParams{
+		FeedID: feedID,
+		Limit:  int32(filters.limit()),
+		Offset: int32(filters.offset()),
+	})
+	//check for an error
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrPostNotFound
+		default:
+			return nil, err
+		}
+	}
+	// make a store for our processed feeds
+	rssPosts := []*RSSFeed{}
+	for _, row := range rssFeedPosts {
+		var rssPost RSSFeed
+		// General infor
+		rssPost.ID = row.ID
+		// Channel info
+		rssPost.Channel.Title = row.Channeltitle
+		// Item Info
+		rssPost.Channel.Item = append(rssPost.Channel.Item, RSSItem{
+			Title:       row.Itemtitle,
+			Description: row.Itemdescription.String,
+			ImageURL:    row.ImgUrl,
+		})
+		//append our feed to the final slice
+		rssPosts = append(rssPosts, &rssPost)
+	}
+	return rssPosts, nil
 }
 
 // This will get the RSS Favorite Posts for a user only, it gets the User ID and the filters
