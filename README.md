@@ -298,8 +298,8 @@ go run main.go
 ```
 
 ## 🧩 Algo <a name = "algo"></a>
-We calculte the score for each user a bit differently. Although v1 was a simplefeed follows and creation division,
-we moved and now the algo looks like this:
+We calculate the score for each user a bit differently. Although v1 was a simple feed follows and creation division, we moved and now the algorithm looks like this:
+
 \[ \text{score} = \frac{\text{total feeds}}{\sum (\text{follows} \times w_f \times e^{-\lambda t_f} + \text{likes} \times w_l \times e^{-\lambda t_l})} \times 100 \]
 
 Where:
@@ -310,10 +310,10 @@ Where:
 - \( t_l \) = time since like (in days)
 - \( \lambda \) = decay constant (controls how fast the weight decreases over time, e.g., 0.01)
 
-An **example** would look like this: 
 ### Example Calculation
 
 **User X:**
+
 - Total Follows: 100
 - Total Likes: 50
 - Total Created Feeds: 10
@@ -333,8 +333,8 @@ An **example** would look like this:
 
 \[ \text{Final Score} = (85 \times 0.8) + (33 \times 0.2) = 68 + 6.6 = 74.6 \]
 
-Please feel free to edit or add to it, Will probably factor in user comments and replies to the above algo
-in version 3.
+Please feel free to edit or add to it. We will probably factor in user comments and replies to the above algorithm in version 3.
+
 
 ## 🚀 Deployment <a name = "deployment"></a>
 
