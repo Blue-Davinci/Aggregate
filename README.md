@@ -300,15 +300,15 @@ go run main.go
 ## 🧩 Algo <a name = "algo"></a>
 We calculate the score for each user a bit differently. Although v1 was a simple feed follows and creation division, we moved and now the algorithm looks like this:
 
-\[ \text{score} = \frac{\text{total feeds}}{\sum (\text{follows} \times w_f \times e^{-\lambda t_f} + \text{likes} \times w_l \times e^{-\lambda t_l})} \times 100 \]
+**score = (total feeds) / Σ(follows * w_f * e^(-λ * t_f) + likes * w_l * e^(-λ * t_l)) * 100**
 
 Where:
 
-- \( w_f \) = weight for follows (e.g., 1.0)
-- \( w_l \) = weight for likes (e.g., 0.5)
-- \( t_f \) = time since follow (in days)
-- \( t_l \) = time since like (in days)
-- \( \lambda \) = decay constant (controls how fast the weight decreases over time, e.g., 0.01)
+- **w_f** = weight for follows (e.g., 1.0)
+- **w_l** = weight for likes (e.g., 0.5)
+- **t_f** = time since follow (in days)
+- **t_l** = time since like (in days)
+- **λ** = decay constant (controls how fast the weight decreases over time, e.g., 0.01)
 
 ### Example Calculation
 
@@ -321,17 +321,17 @@ Where:
 
 **Engagement Score:**
 
-\[ \text{Engagement Score} = (100 \times 0.7) + (50 \times 0.3) = 70 + 15 = 85 \]
+**Engagement Score = (100 * 0.7) + (50 * 0.3) = 70 + 15 = 85**
 
 **Consistency Score:**
 
-\[ \text{Consistency Score} = \frac{10}{30} = 0.33 \]
+**Consistency Score = (10 / 30) = 0.33**
 
-(normalize to 0-100 range: \( 0.33 \times 100 = 33 \))
+(normalize to 0-100 range: **0.33 * 100 = 33**)
 
 **Final Score:**
 
-\[ \text{Final Score} = (85 \times 0.8) + (33 \times 0.2) = 68 + 6.6 = 74.6 \]
+**Final Score = (85 * 0.8) + (33 * 0.2) = 68 + 6.6 = 74.6**
 
 Please feel free to edit or add to it. We will probably factor in user comments and replies to the above algorithm in version 3.
 
