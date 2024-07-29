@@ -264,16 +264,16 @@ func (m FeedModel) Insert(feed *Feed) error {
 	return nil
 }
 
-func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {
+func (m FeedModel) GetAllFeeds(name, feed_type string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// retrieve our data
 	rows, err := m.DB.GetAllFeeds(ctx, database.GetAllFeedsParams{
-		Column1: name,
-		Column2: sql.NullString{String: url, Valid: true}, // Convert string to sql.NullString
-		Limit:   int32(filters.limit()),
-		Offset:  int32(filters.offset()),
+		Column1:  name,
+		FeedType: feed_type, // Convert string to sql.NullString
+		Limit:    int32(filters.limit()),
+		Offset:   int32(filters.offset()),
 	})
 	//check for an error
 	if err != nil {
@@ -317,7 +317,7 @@ func (m FeedModel) GetAllFeeds(name string, url string, filters Filters) ([]*Fee
 // whether a feed is followed or not. It also takes in a search string: 'name' if available and searches
 // for a feed matching that, i found returns the items as well. We limit by a default of 30 no matter
 // whether something is being searched or there is no query.
-func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {
+func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name, feed_type string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -327,6 +327,7 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name string, filters 
 		PlaintoTsquery: name,
 		Limit:          int32(filters.limit()),
 		Offset:         int32(filters.offset()),
+		FeedType:       feed_type,
 	})
 	//fmt.Println("Filters: ", filters)
 	//check for an error

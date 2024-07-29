@@ -291,11 +291,14 @@ SELECT
     p.itemurl,
     p.img_url,
     p.feed_id,
-    true AS is_favorite  -- Initialize is_favorite to true
+    true AS is_favorite,  -- Initialize is_favorite to true
+    COALESCE(ff.user_id IS NOT NULL, false) AS is_followed_feed  -- Determine if the feed is followed
 FROM 
     rssfeed_posts p
 JOIN 
     postfavorites f ON p.id = f.post_id
+LEFT JOIN
+    feed_follows ff ON p.feed_id = ff.feed_id AND ff.user_id = $1  -- Check if the user follows the feed
 WHERE 
     f.user_id = $1  -- Parameter 1: user_id
     AND ($2 = '' OR to_tsvector('simple', p.itemtitle) @@ plainto_tsquery('simple', $2))  -- Parameter 2: itemtitle (full-text search for item title)
@@ -329,6 +332,7 @@ type GetRSSFavoritePostsOnlyForUserRow struct {
 	ImgUrl             string
 	FeedID             uuid.UUID
 	IsFavorite         bool
+	IsFollowedFeed     interface{}
 }
 
 func (q *Queries) GetRSSFavoritePostsOnlyForUser(ctx context.Context, arg GetRSSFavoritePostsOnlyForUserParams) ([]GetRSSFavoritePostsOnlyForUserRow, error) {
@@ -362,6 +366,7 @@ func (q *Queries) GetRSSFavoritePostsOnlyForUser(ctx context.Context, arg GetRSS
 			&i.ImgUrl,
 			&i.FeedID,
 			&i.IsFavorite,
+			&i.IsFollowedFeed,
 		); err != nil {
 			return nil, err
 		}

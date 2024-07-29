@@ -116,6 +116,8 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 func (app *application) searchOptionsRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	searchOptionsRoutes := chi.NewRouter()
 	searchOptionsRoutes.With(dynamicMiddleware.Then).Get("/feeds", app.getFeedSearchOptionsHandler)
+	// This is a general route intended for the feeds search options
+	searchOptionsRoutes.Get("/feed-types", app.getFeedTypeSearchOptionsHandler)
 	return searchOptionsRoutes
 }
 

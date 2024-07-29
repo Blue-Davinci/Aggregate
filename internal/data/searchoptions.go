@@ -18,6 +18,15 @@ type SearchOptionFeedDetail struct {
 	Feed_Name string    `json:"feed_name"`
 }
 
+type SearchOptionFeedType struct {
+	Feed_ID   int    `json:"feed_id"`
+	Feed_Type string `json:"feed_type"`
+}
+
+// The ID's will be used for interopolations for the frontend
+
+// GetFeedSearchOptions() returns all available distinct feeds
+// we have in the database. For the ID's, we will use their UUID's
 func (m SearchOptionsDataModel) GetFeedSearchOptions() ([]*SearchOptionFeedDetail, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -34,4 +43,24 @@ func (m SearchOptionsDataModel) GetFeedSearchOptions() ([]*SearchOptionFeedDetai
 		feedDetails = append(feedDetails, &feedDetail)
 	}
 	return feedDetails, nil
+}
+
+// GetFeedTypeSearchOptions() returns all available distinct feed types
+// we have in the database. For the ID's, we will just use the indexes
+func (m SearchOptionsDataModel) GetFeedTypeSearchOptions() ([]*SearchOptionFeedType, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	feeds, err := m.DB.GetFeedTypeSearchOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	feedTypes := []*SearchOptionFeedType{}
+	for i, feed_type := range feeds {
+		var feedType SearchOptionFeedType
+		feedType.Feed_ID = i + 1
+		feedType.Feed_Type = feed_type
+		feedTypes = append(feedTypes, &feedType)
+	}
+	return feedTypes, nil
 }

@@ -12,6 +12,10 @@ WHERE id = $1 AND version = $8;
 SELECT DISTINCT id, name
 FROM feeds;
 
+-- name: GetFeedTypeSearchOptions :many
+SELECT DISTINCT feed_type
+FROM feeds;
+
 -- name: CreateFeed :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description, is_hidden) 
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
@@ -21,7 +25,7 @@ RETURNING *;
 SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
 FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
-AND ($2 = '' OR url LIKE '%' || $2 || '%')
+AND feed_type = $2 OR $2 = ''
 AND is_hidden = FALSE
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4;
@@ -91,10 +95,12 @@ LEFT JOIN (
 ) ff ON f.id = ff.feed_id
 WHERE 
     (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
-     AND (f.is_hidden = false OR f.user_id = $1)
+    AND (f.is_hidden = false OR f.user_id = $1)
+    AND (f.feed_type = $5 OR $5 = '')
 ORDER BY 
     f.created_at DESC
 LIMIT $3 OFFSET $4;
+
 
 -- name: GetListOfFollowedFeeds :many
 SELECT 

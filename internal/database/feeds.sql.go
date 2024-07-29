@@ -116,17 +116,17 @@ const getAllFeeds = `-- name: GetAllFeeds :many
 SELECT count(*) OVER(), id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
 FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
-AND ($2 = '' OR url LIKE '%' || $2 || '%')
+AND feed_type = $2 OR $2 = ''
 AND is_hidden = FALSE
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4
 `
 
 type GetAllFeedsParams struct {
-	Column1 interface{}
-	Column2 interface{}
-	Limit   int32
-	Offset  int32
+	Column1  interface{}
+	FeedType string
+	Limit    int32
+	Offset   int32
 }
 
 type GetAllFeedsRow struct {
@@ -147,7 +147,7 @@ type GetAllFeedsRow struct {
 func (q *Queries) GetAllFeeds(ctx context.Context, arg GetAllFeedsParams) ([]GetAllFeedsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAllFeeds,
 		arg.Column1,
-		arg.Column2,
+		arg.FeedType,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -216,7 +216,8 @@ LEFT JOIN (
 ) ff ON f.id = ff.feed_id
 WHERE 
     (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
-     AND (f.is_hidden = false OR f.user_id = $1)
+    AND (f.is_hidden = false OR f.user_id = $1)
+    AND (f.feed_type = $5 OR $5 = '')
 ORDER BY 
     f.created_at DESC
 LIMIT $3 OFFSET $4
@@ -227,6 +228,7 @@ type GetAllFeedsFollowedByUserParams struct {
 	PlaintoTsquery string
 	Limit          int32
 	Offset         int32
+	FeedType       string
 }
 
 type GetAllFeedsFollowedByUserRow struct {
@@ -253,6 +255,7 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 		arg.PlaintoTsquery,
 		arg.Limit,
 		arg.Offset,
+		arg.FeedType,
 	)
 	if err != nil {
 		return nil, err
@@ -353,6 +356,34 @@ func (q *Queries) GetFeedSearchOptions(ctx context.Context) ([]GetFeedSearchOpti
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFeedTypeSearchOptions = `-- name: GetFeedTypeSearchOptions :many
+SELECT DISTINCT feed_type
+FROM feeds
+`
+
+func (q *Queries) GetFeedTypeSearchOptions(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedTypeSearchOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var feed_type string
+		if err := rows.Scan(&feed_type); err != nil {
+			return nil, err
+		}
+		items = append(items, feed_type)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

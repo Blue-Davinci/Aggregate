@@ -438,6 +438,7 @@ func (m RSSFeedDataModel) GetRSSFavoritePostsOnlyForUser(userID int64, feed_name
 		//Aggregate the data
 		favoritePost.RSSFeed = &rssPost
 		favoritePost.IsFavorite = row.IsFavorite
+		favoritePost.IsFollowed = row.IsFollowedFeed.(bool)
 		//append our feed to the final slice
 		metadata = calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 		favoritePosts = append(favoritePosts, &favoritePost)

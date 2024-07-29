@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/blue-davinci/aggregate/internal/data"
 	"github.com/blue-davinci/aggregate/internal/validator"
@@ -34,11 +35,12 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 
 	// Create a new Feed record in the database while using contextGetUser
 	// To pass down the user information to the feed model
+	// We will convert the feed_type to lower since we gonna use it for searching
 	feed := &data.Feed{
 		Name:            input.Name,
 		Url:             input.Url,
 		ImgURL:          input.ImgURL,
-		FeedType:        input.FeedType,
+		FeedType:        strings.ToLower(input.FeedType),
 		FeedDescription: input.FeedDescription,
 		UserID:          app.contextGetUser(r).ID,
 		Is_Hidden:       input.Is_Hidden,
@@ -75,8 +77,8 @@ func (app *application) createFeedHandler(w http.ResponseWriter, r *http.Request
 func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
 	var input struct {
-		Name string
-		Url  string
+		Name      string
+		Feed_Type string
 		data.Filters
 	}
 	//validate if queries are provided
@@ -85,7 +87,7 @@ func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Reques
 	qs := r.URL.Query()
 	// use our helpers to convert the queries
 	input.Name = app.readString(qs, "name", "")
-	input.Url = app.readString(qs, "url", "")
+	input.Feed_Type = app.readString(qs, "feed_type", "")
 	//get the page & pagesizes as ints and set to the embedded struct
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
@@ -99,7 +101,7 @@ func (app *application) getAllFeedsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	//fmt.Println(">> Page and Pagesize: ", input.Filters.Page, input.Filters.PageSize)
-	feeds, metadata, err := app.models.Feeds.GetAllFeeds(input.Name, input.Url, input.Filters)
+	feeds, metadata, err := app.models.Feeds.GetAllFeeds(input.Name, input.Feed_Type, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -222,7 +224,8 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 	// make a struct to hold what we would want from the queries
 	//we also need a member for name for search queries
 	var input struct {
-		Name string
+		Name      string
+		Feed_Type string
 		data.Filters
 	}
 	//validate if queries are provided
@@ -231,6 +234,7 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 	qs := r.URL.Query()
 	//get the page & pagesizes as ints and set to the embedded struct
 	input.Name = app.readString(qs, "name", "")
+	input.Feed_Type = app.readString(qs, "feed_type", "")
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
 	// get the sort values falling back to "id" if it is not provided
@@ -242,7 +246,7 @@ func (app *application) getAllFeedsFollowedHandler(w http.ResponseWriter, r *htt
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	feed_follows, metadata, err := app.models.Feeds.GetAllFeedsFollowedByUser(app.contextGetUser(r).ID, input.Name, input.Filters)
+	feed_follows, metadata, err := app.models.Feeds.GetAllFeedsFollowedByUser(app.contextGetUser(r).ID, input.Name, input.Feed_Type, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -460,9 +464,9 @@ func (app *application) updateFeedHandler(w http.ResponseWriter, r *http.Request
 	if input.ImgURL != nil {
 		feed.ImgURL = *input.ImgURL
 	}
-	// check for the feed_type
+	// check for the feed_type and set it to lower for a search column
 	if input.FeedType != nil {
-		feed.FeedType = *input.FeedType
+		feed.FeedType = strings.ToLower(*input.FeedType)
 	}
 	// check for the feed_description
 	if input.FeedDescription != nil {
