@@ -248,6 +248,10 @@ Below are all the end points for the API and a high level description of what th
 
 29. **GET /top/creators:** Get the top x users of the API. it uses an algorithm explained in this readme.
 
+30. **GET /search-options/feeds:** Get all available feeds to populate your search filter.
+
+31. **GET /search-options/feed-type:** Get all available feed-type to populate your search filters.
+
 <hr />
 
 ## 🔧 Running the tests <a name = "tests"></a>

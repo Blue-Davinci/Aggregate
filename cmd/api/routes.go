@@ -92,7 +92,7 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 
 	feedRoutes.With(dynamicMiddleware.Then).Post("/follow", app.createFeedFollowHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/{feedID}", app.deleteFeedFollowHandler)
-	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts", app.GetFollowedRssPostsForUserHandler)
+	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts", app.getFollowedRssPostsForUserHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts/{postID}", app.getRSSFeedByIDHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Post("/follow/posts/comments", app.createCommentHandler)
 

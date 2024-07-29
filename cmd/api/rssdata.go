@@ -112,7 +112,7 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 }
 
 // Handler for out GetAllPost
-func (app *application) GetFollowedRssPostsForUserHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) getFollowedRssPostsForUserHandler(w http.ResponseWriter, r *http.Request) {
 	app.logger.PrintInfo("Getting Followed RSS Posts for User", nil)
 	// make a struct to hold what we would want from the queries
 	var input struct {
