@@ -304,15 +304,18 @@ go run main.go
 ## 🧩 Algo <a name = "algo"></a>
 We calculate the score for each user a bit differently. Although v1 was a simple feed follows and creation division, we moved and now the algorithm looks like this:
 
-**score = (total feeds) / Σ(follows * w_f * e^(-λ * t_f) + likes * w_l * e^(-λ * t_l)) * 100**
+**score = (total feeds) / Σ(follows \* w_f \* e^(-λ \* t_f) + likes \* w_l \* e^(-λ \* t_l) + comments \* w_c \* e^(-λ \* t_c) + R) \* 100**
 
 Where:
 
 - **w_f** = weight for follows (e.g., 1.0)
 - **w_l** = weight for likes (e.g., 0.5)
+- **w_c** = weight for comments (e.g., 0.2)
 - **t_f** = time since follow (in days)
 - **t_l** = time since like (in days)
+- **t_c** = time since comment (in days)
 - **λ** = decay constant (controls how fast the weight decreases over time, e.g., 0.01)
+- **R** = random factor for users with minimal activity to ensure they don't have identical scores (e.g., a small random value between 0 and 1)
 
 ### Example Calculation
 
@@ -320,25 +323,32 @@ Where:
 
 - Total Follows: 100
 - Total Likes: 50
+- Total Comments: 20
 - Total Created Feeds: 10
 - Average Time Between Feeds: 30 days
 
 **Engagement Score:**
 
-**Engagement Score = (100 * 0.7) + (50 * 0.3) = 70 + 15 = 85**
+**Engagement Score = (100 \* 0.7) + (50 \* 0.3) + (20 \* 0.2) = 70 + 15 + 4 = 89**
 
 **Consistency Score:**
 
 **Consistency Score = (10 / 30) = 0.33**
 
-(normalize to 0-100 range: **0.33 * 100 = 33**)
+(normalize to 0-100 range: **0.33 \* 100 = 33**)
+
+**Random Factor:**
+
+**Random Factor = R (a small random value between 0 and 1)**
 
 **Final Score:**
 
-**Final Score = (85 * 0.8) + (33 * 0.2) = 68 + 6.6 = 74.6**
+**Final Score = ((89 \* 0.8) + (33 \* 0.2) + R) = 71.2 + 6.6 + R = 77.8 + R**
 
-Please feel free to edit or add to it. We will probably factor in user comments and replies to the above algorithm in version 3.
+---
 
+- Feel free to update the weights and the decay constant as per the requirements. The random factor ensures that users with minimal activity don't end up with identical scores.
+- This is the **v3** edition of the above algo.
 
 ## 🚀 Deployment <a name = "deployment"></a>
 
