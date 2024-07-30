@@ -40,6 +40,7 @@ type TopCreators struct {
 	Total_Follows              int64   `json:"total_follows"`
 	Total_Likes                int64   `json:"total_likes"`
 	Total_Created_Feeds        int64   `json:"created_feeds"`
+	Total_Comments             int64   `json:"total_comments"`
 	Average_Time_Between_Feeds float64 `json:"-"`
 	Creator_Score              float64 `json:"creator_score"`
 }
@@ -535,6 +536,7 @@ func (m FeedModel) GetTopFeedCreators(filters Filters) ([]*TopCreators, error) {
 		topCreator.Total_Follows = row.TotalFollows
 		topCreator.Total_Likes = row.TotalLikes.Int64
 		topCreator.Total_Created_Feeds = row.TotalCreatedFeeds.Int64
+		topCreator.Total_Comments = row.TotalComments
 		avgTimeBetweenFeeds, ok := row.AvgTimeBetweenFeeds.(float64)
 		if !ok {
 			return nil, ErrConvertingTime

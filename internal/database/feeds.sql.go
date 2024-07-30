@@ -699,6 +699,15 @@ feed_creation_counts AS (
         feeds f
     GROUP BY
         f.user_id
+),
+comment_counts AS (
+    SELECT
+        c.user_id,
+        COUNT(c.id) AS total_comments
+    FROM
+        comments c
+    GROUP BY
+        c.user_id
 )
 SELECT
     u.name,
@@ -706,7 +715,8 @@ SELECT
     ffc.total_follows,
     plc.total_likes,
     fcc.total_created_feeds,
-    COALESCE(atbf.avg_time_between_feeds::float8, 0) AS avg_time_between_feeds
+    COALESCE(atbf.avg_time_between_feeds::float8, 0) AS avg_time_between_feeds,
+    COALESCE(cc.total_comments, 0) AS total_comments
 FROM
     feed_follow_counts ffc
 LEFT JOIN
@@ -715,6 +725,8 @@ LEFT JOIN
     feed_creation_counts fcc ON ffc.user_id = fcc.user_id
 LEFT JOIN
     avg_time_between_feeds atbf ON ffc.user_id = atbf.user_id
+LEFT JOIN
+    comment_counts cc ON ffc.user_id = cc.user_id
 LEFT JOIN
     users u ON ffc.user_id = u.id
 ORDER BY
@@ -734,6 +746,7 @@ type GetTopFeedCreatorsRow struct {
 	TotalLikes          sql.NullInt64
 	TotalCreatedFeeds   sql.NullInt64
 	AvgTimeBetweenFeeds interface{}
+	TotalComments       int64
 }
 
 func (q *Queries) GetTopFeedCreators(ctx context.Context, arg GetTopFeedCreatorsParams) ([]GetTopFeedCreatorsRow, error) {
@@ -752,6 +765,7 @@ func (q *Queries) GetTopFeedCreators(ctx context.Context, arg GetTopFeedCreators
 			&i.TotalLikes,
 			&i.TotalCreatedFeeds,
 			&i.AvgTimeBetweenFeeds,
+			&i.TotalComments,
 		); err != nil {
 			return nil, err
 		}
