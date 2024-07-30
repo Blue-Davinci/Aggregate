@@ -15,11 +15,14 @@ type weights struct {
 }
 
 // scoreCalculationAlgorithm() computes the score for a given top creator.
-// we compute the engagement score using the formula: (Total Follows * 0.7) + (Total Likes * 0.3)
-// we then get the consistency as the ratio of total created feeds to the average time between feeds.
-// after which we normalize the consistency score to a 0-100 range.
-// and combine the engagement score (80% weight) and the normalized consistency score (20% weight)
-// to get the final score.
+// We compute the engagement score using the formula:
+// (Total Follows * w_f) + (Total Likes * w_l) + (Total Comments * w_c)
+// where w_f, w_l, and w_c are the weights for follows, likes, and comments respectively.
+// We then get the consistency as the ratio of total created feeds to the average time between feeds.
+// After which we normalize the consistency score to a 0-100 range.
+// We also introduce a small random factor (R) to ensure users with minimal activity don't end up with identical scores.
+// Finally, we combine the engagement score (80% weight), the normalized consistency score (20% weight),
+// and the random factor to get the final score.
 func (m FeedModel) scoreCalculationAlgorithm(topCreator *TopCreators) float64 {
 	weight := weights{
 		TotalFollows:    0.5,
