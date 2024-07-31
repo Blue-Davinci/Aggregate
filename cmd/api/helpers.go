@@ -22,6 +22,15 @@ import (
 // Define an envelope type.
 type envelope map[string]any
 
+func (app *application) covertToByteArray(data interface{}) ([]byte, error) {
+	js, err := json.Marshal(data)
+	if err != nil {
+		app.logger.PrintError(err, nil)
+		return nil, err
+	}
+	return js, nil
+}
+
 // writeJSON() helper for sending responses. This takes the destination
 // http.ResponseWriter, the HTTP status code to send, the data to encode to JSON, and a
 // header map containing any additional HTTP headers we want to include in the response.
@@ -56,6 +65,49 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 	dec.DisallowUnknownFields()
 	// Decode the request body to the destination.
 	err := dec.Decode(dst)
+	err = app.jsonReadAndHandleError(err)
+	if err != nil {
+		return err
+	}
+	// Call Decode() again, using a pointer to an empty anonymous struct as the
+	// destination. If the request body only contained a single JSON value this will
+	// return an io.EOF error. So if we get anything else, we know that there is
+	// additional data in the request body and we return our own custom error message.
+	err = dec.Decode(&struct{}{})
+	if err != io.EOF {
+		return errors.New("body must only contain a single JSON value")
+	}
+	return nil
+}
+
+func (app *application) readJSONFromReader(reader io.Reader, dst any) error {
+	// Use a limited reader to restrict the size of the body to 1MB.
+	maxBytes := 1_048_576
+	limitedReader := io.LimitReader(reader, int64(maxBytes))
+
+	// Initialize the json.Decoder and disallow unknown fields.
+	dec := json.NewDecoder(limitedReader)
+	dec.DisallowUnknownFields()
+
+	// Decode the JSON data to the destination.
+	err := dec.Decode(dst)
+	err = app.jsonReadAndHandleError(err)
+	if err != nil {
+		return err
+	}
+	// Call Decode() again, using a pointer to an empty anonymous struct as the destination.
+	// If the request body only contained a single JSON value this will return an io.EOF error.
+	// So if we get anything else, we know that there is additional data in the request body
+	// and we return our own custom error message.
+	err = dec.Decode(&struct{}{})
+	if err != io.EOF {
+		return errors.New("body must only contain a single JSON value")
+	}
+
+	return nil
+}
+
+func (app *application) jsonReadAndHandleError(err error) error {
 	if err != nil {
 		// Vars to carry our errors
 		var syntaxError *json.SyntaxError
@@ -94,14 +146,6 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 		default:
 			return err
 		}
-	}
-	// Call Decode() again, using a pointer to an empty anonymous struct as the
-	// destination. If the request body only contained a single JSON value this will
-	// return an io.EOF error. So if we get anything else, we know that there is
-	// additional data in the request body and we return our own custom error message.
-	err = dec.Decode(&struct{}{})
-	if err != io.EOF {
-		return errors.New("body must only contain a single JSON value")
 	}
 	return nil
 }

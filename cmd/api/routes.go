@@ -38,6 +38,7 @@ func (app *application) routes() http.Handler {
 	v1Router.Mount("/feeds", app.feedRoutes(&dynamicMiddleware))
 	v1Router.Mount("/search-options", app.searchOptionsRoutes(&dynamicMiddleware))
 	v1Router.Mount("/api", app.apiKeyRoutes())
+	v1Router.With(dynamicMiddleware.Then).Mount("/subscriptions", app.subscriptionRoutes())
 
 	// Mount to our base version
 	router.Mount("/v1", v1Router)
@@ -139,4 +140,13 @@ func (app *application) apiKeyRoutes() chi.Router {
 	// /password-reset : for sending keys for resetting passwords
 
 	return apiKeyRoutes
+}
+
+// subscriptionRoutes() provides a router for the /subscriptions API endpoint.
+// It is responsible for the subscription/paments for users
+func (app *application) subscriptionRoutes() chi.Router {
+	subscriptionRoutes := chi.NewRouter()
+	subscriptionRoutes.Post("/initialize", app.initializeTransactionHandler)
+	subscriptionRoutes.Post("/verify", app.verifyTransactionHandler)
+	return subscriptionRoutes
 }

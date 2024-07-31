@@ -54,10 +54,16 @@ type config struct {
 	cors struct {
 		trustedOrigins []string
 	}
+	paystack struct {
+		secretkey         string
+		initializationurl string
+		verificationurl   string
+	}
 	frontend struct {
 		baseurl          string
 		activationurl    string
 		passwordreseturl string
+		callback_url     string
 	}
 }
 type application struct {
@@ -93,10 +99,15 @@ func main() {
 	flag.IntVar(&cfg.scraper.fetchinterval, "scraper-interval", 40, "Interval in seconds before the next bunch of feeds are fetched")
 	flag.IntVar(&cfg.scraper.scraperclient.retrymax, "scraper-retry-max", 3, "Maximum number of retries for HTTP requests")
 	flag.IntVar(&cfg.scraper.scraperclient.timeout, "scraper-timeout", 15, "HTTP client timeout in seconds")
+	// Paystack secret key
+	flag.StringVar(&cfg.paystack.secretkey, "paystack-secret", os.Getenv("PAYSTACK_SECRET_KEY"), "Paystack Secret Key")
+	flag.StringVar(&cfg.paystack.initializationurl, "paystack-initialization-url", "https://api.paystack.co/transaction/initialize", "Paystack Initialization URL")
+	flag.StringVar(&cfg.paystack.verificationurl, "paystack-verification-url", "https://api.paystack.co/transaction/verify/", "Paystack Verification URL")
 	// Read the frontend url into the config struct
 	flag.StringVar(&cfg.frontend.baseurl, "frontend-url", "http://localhost:5173", "Frontend URL")
 	flag.StringVar(&cfg.frontend.activationurl, "frontend-activation-url", "http://localhost:5173/verify?token=", "Frontend Activation URL")
 	flag.StringVar(&cfg.frontend.passwordreseturl, "frontend-password-reset-url", "http://localhost:5173/reset/password?token=", "Frontend Password Reset URL")
+	flag.StringVar(&cfg.frontend.callback_url, "frontend-callback-url", "https://20a4-102-211-145-1.ngrok-free.app", "Frontend Callback URL")
 	// Cors
 	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(val string) error {
 		cfg.cors.trustedOrigins = strings.Fields(val)

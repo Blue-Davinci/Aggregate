@@ -21,6 +21,7 @@ type Models struct {
 	Notifications NotificationsModel
 	SearchOptions SearchOptionsDataModel
 	Comments      CommentsModel
+	Payments      PaymentsModel
 	//feed models
 }
 
@@ -34,5 +35,6 @@ func NewModels(db *database.Queries) Models {
 		Notifications: NotificationsModel{DB: db},
 		SearchOptions: SearchOptionsDataModel{DB: db},
 		Comments:      CommentsModel{DB: db},
+		Payments:      PaymentsModel{DB: db},
 	}
 }
