@@ -10,6 +10,13 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
+// initializeTransactionHandler() is a handler that creates an intent for the transaction
+// we get in the plan ID, amount in cts and a callback URL. If the callback URL is not
+// provided, we default to the internal callback URL. The plan ID keeps track of the plan
+// we will be using incase we will ever want to save an intent, which we don't now.
+// We validate the transaction data and then send the data to the transaction client
+// which should send a post request and get back a response which contains a reference as well
+// and more importantly the authorization URL. We then write the response to the client.
 func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		PlanID      int64  `json:"plan_id"`
@@ -42,12 +49,19 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	// We send back the transaction Data incase the frontend needs it as well as the initialize response which
+	// the frontend will require, using both the auth URL and the reference.
 	err = app.writeJSON(w, http.StatusCreated, envelope{"initialization": initializeResponse.InitializeResponse, "transaction_data": transactionData}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
 
+// verifyTransactionHandler() is a handler that verifies a transaction. We get the reference
+// and the plan ID. We validate the transaction data and then send the data to the transaction
+// client which should send a get request and get back a response which contains the status of the
+// transaction, the message and the card type in additiona to a whole bevy of info. We will
+// only save this data if it was actually successful or send back an error if not
 func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Reference string `json:"reference"`
@@ -88,6 +102,15 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// transactionClient() sets up the client side of this module. The client is different from the scraper
+// and performs tasks differently thus we just made a none-unified one. We set up a retryable client
+// which sets up the body based on the type of transaction request we are doing. If a transaction request is
+// an initialization request i.e PaymentOperationInitialize, we use a POST request to send the transaction
+// DATA to the payment URL while If it is a verification request i.e PaymentOperationVerify, we use a GET request
+// to get the transaction data from the payment URL. We make sure to set relevant headers for each request,
+// most important of which is the PAYSTACK secret KEY.
+// the responses are written in a unified struct and returned to the callers which can access them via
+// their appropriate fields.
 func (app *application) transactionClient(transactionData *data.TransactionData, payment_url string, paymentOperation data.PaymentOperation) (*data.UnifiedPaymentResponse, error) {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = 5
