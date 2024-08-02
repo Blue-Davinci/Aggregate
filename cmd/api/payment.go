@@ -10,6 +10,18 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
+func (app *application) getPaymentPlansHandler(w http.ResponseWriter, r *http.Request) {
+	plans, err := app.models.Payments.GetPaymentPlans()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"plans": plans}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // initializeTransactionHandler() is a handler that creates an intent for the transaction
 // we get in the plan ID, amount in cts and a callback URL. If the callback URL is not
 // provided, we default to the internal callback URL. The plan ID keeps track of the plan
@@ -117,7 +129,8 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 	var body *bytes.Buffer
 	var req *retryablehttp.Request
 	var err error
-
+	// if the operation is an initialization, we do a quick byte conversion of the
+	// body and set up the request to be a POST request
 	if paymentOperation == data.PaymentOperationInitialize {
 		jsonData, err := app.covertToByteArray(transactionData)
 		if err != nil {
@@ -138,7 +151,7 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 		}
 	}
 
-	app.logger.PrintInfo("secret key: ", map[string]string{"key": app.config.paystack.secretkey})
+	// we set the headers for the request, using our token saved in our env file
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", app.config.paystack.secretkey))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := retryClient.Do(req)
@@ -148,6 +161,7 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 	}
 	defer resp.Body.Close()
 
+	// prep the response reciever
 	var paymentRequest any
 	if paymentOperation == data.PaymentOperationInitialize {
 		paymentRequest = &data.InitializeResponse{}
@@ -155,6 +169,7 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 		paymentRequest = &data.VerifyResponse{}
 	}
 	app.logger.PrintInfo("payment request", map[string]string{"request": fmt.Sprintf("%+v", paymentRequest)})
+	// get the response and decode it into our reciever
 	err = app.readJSONFromReader(resp.Body, &paymentRequest)
 	if err != nil {
 		return nil, err

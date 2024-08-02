@@ -38,7 +38,7 @@ func (app *application) routes() http.Handler {
 	v1Router.Mount("/feeds", app.feedRoutes(&dynamicMiddleware))
 	v1Router.Mount("/search-options", app.searchOptionsRoutes(&dynamicMiddleware))
 	v1Router.Mount("/api", app.apiKeyRoutes())
-	v1Router.With(dynamicMiddleware.Then).Mount("/subscriptions", app.subscriptionRoutes())
+	v1Router.Mount("/subscriptions", app.subscriptionRoutes(&dynamicMiddleware))
 
 	// Mount to our base version
 	router.Mount("/v1", v1Router)
@@ -144,9 +144,11 @@ func (app *application) apiKeyRoutes() chi.Router {
 
 // subscriptionRoutes() provides a router for the /subscriptions API endpoint.
 // It is responsible for the subscription/paments for users
-func (app *application) subscriptionRoutes() chi.Router {
+func (app *application) subscriptionRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	subscriptionRoutes := chi.NewRouter()
-	subscriptionRoutes.Post("/initialize", app.initializeTransactionHandler)
-	subscriptionRoutes.Post("/verify", app.verifyTransactionHandler)
+	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/initialize", app.initializeTransactionHandler)
+	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/verify", app.verifyTransactionHandler)
+	// plans is free to everyone
+	subscriptionRoutes.Get("/plans", app.getPaymentPlansHandler)
 	return subscriptionRoutes
 }

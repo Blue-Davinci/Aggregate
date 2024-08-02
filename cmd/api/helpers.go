@@ -22,6 +22,9 @@ import (
 // Define an envelope type.
 type envelope map[string]any
 
+// Perform a quick marshal instead of a marshalIndent for a tiny more speed
+// as we will use this for converting data to json for our payment
+// operations
 func (app *application) covertToByteArray(data interface{}) ([]byte, error) {
 	js, err := json.Marshal(data)
 	if err != nil {

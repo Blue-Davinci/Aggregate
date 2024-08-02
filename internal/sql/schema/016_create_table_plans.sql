@@ -2,14 +2,15 @@
 CREATE TABLE payment_plans (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
+    description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     features TEXT[] NOT NULL,
     created_at timestamp(0) with time zone NOT NULL DEFAULT NOW(),
     updated_at timestamp(0) with time zone NOT NULL DEFAULT NOW(),
-    comment TEXT
+    status TEXT NOT NULL DEFAULT 'active'
 );
 -- Add our pre-made payment plans
-INSERT INTO payment_plans (name, price, features, comment)
+INSERT INTO payment_plans (name, price, features, description)
 VALUES 
     ('Free', 0.00, ARRAY['5 feeds', 'Follow 10 feeds', '10 messages/day'], 'Get Started'),
     ('Monthly', 10.00, ARRAY['20 feeds', 'Follow 40 feeds', '20 messages/day'], 'Buy Now'),

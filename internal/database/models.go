@@ -68,6 +68,17 @@ type Notification struct {
 	CreatedAt time.Time
 }
 
+type PaymentPlan struct {
+	ID          int32
+	Name        string
+	Description sql.NullString
+	Price       string
+	Features    []string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Status      string
+}
+
 type Postfavorite struct {
 	ID        int64
 	PostID    uuid.UUID
@@ -90,6 +101,25 @@ type RssfeedPost struct {
 	Itemurl            string
 	ImgUrl             string
 	FeedID             uuid.UUID
+}
+
+type Subscription struct {
+	ID                int32
+	UserID            sql.NullInt32
+	PlanID            sql.NullInt32
+	StartDate         time.Time
+	EndDate           sql.NullTime
+	Price             string
+	Status            string
+	TransactionID     sql.NullString
+	PaymentMethod     sql.NullString
+	AuthorizationCode sql.NullString
+	CardLast4         sql.NullString
+	CardExpMonth      sql.NullString
+	CardExpYear       sql.NullString
+	CardType          sql.NullString
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type User struct {

@@ -1,6 +1,10 @@
 package data
 
 import (
+	"context"
+	"strconv"
+	"time"
+
 	"github.com/blue-davinci/aggregate/internal/database"
 	"github.com/blue-davinci/aggregate/internal/validator"
 )
@@ -132,6 +136,17 @@ type TransactionData struct {
 	Reference   string `json:"reference"`
 }
 
+type Payment_Plan struct {
+	ID          int32     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       int64     `json:"amount"`
+	Features    []string  `json:"features"`
+	Created_At  time.Time `json:"created_at"`
+	Updated_At  time.Time `json:"updated_at"`
+	Status      string    `json:"status"`
+}
+
 func ValidateTransactionData(v *validator.Validator, transactionData *TransactionData) {
 	//amount
 	v.Check(transactionData.Amount != 0, "amount", "must be varied")
@@ -148,6 +163,36 @@ func ValidateVerificationData(v *validator.Validator, transactionData *Transacti
 func (m *PaymentsModel) InitializeTransaction() {
 
 }
-func (m *PaymentsModel) InsertPayment() {
+func (m *PaymentsModel) CreateSubscription() {
 	// InsertPayment inserts a new payment into the database.
+}
+func (m *PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := m.DB.GetPaymentPlans(ctx)
+	if err != nil {
+		return nil, err
+	}
+	payment_plans := []*Payment_Plan{}
+	for _, row := range rows {
+		var payment_plan Payment_Plan
+		payment_plan.ID = row.ID
+		payment_plan.Name = row.Name
+		payment_plan.Description = row.Description.String
+		priceStr := row.Price
+		price, err := strconv.ParseFloat(priceStr, 64)
+		if err != nil {
+			return nil, err
+		}
+		payment_plan.Price = int64(price)
+		payment_plan.Features = row.Features
+		payment_plan.Created_At = row.CreatedAt
+		payment_plan.Updated_At = row.UpdatedAt
+		payment_plan.Status = row.Status
+
+		payment_plans = append(payment_plans, &payment_plan)
+	}
+	return payment_plans, nil
 }
