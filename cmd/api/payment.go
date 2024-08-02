@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
+// getPaymentPlansHandler() is a handler that gets all the available subscription plans.
+// it's a simple route, all we do is get the plans from the database and write them to the client.
 func (app *application) getPaymentPlansHandler(w http.ResponseWriter, r *http.Request) {
 	plans, err := app.models.Payments.GetPaymentPlans()
 	if err != nil {
@@ -108,6 +110,12 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 		"message":   verifyResponse.VerifyResponse.Message,
 		"card_type": verifyResponse.VerifyResponse.Data.Authorization.CardType,
 	})
+	// if the transaction was successful, we save the transaction data to the database
+	// ToDo: Impliment saving of transaction data to the database
+	// ToDo: Create go routine to send an email of payment success to the user, Maybe a reciept.
+
+	// We send back the transaction Data incase the frontend needs it as well as the verify response which
+	// the frontend may require.
 	err = app.writeJSON(w, http.StatusOK, envelope{"verification": verifyResponse, "transaction_data": transactionData}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
