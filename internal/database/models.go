@@ -71,7 +71,9 @@ type Notification struct {
 type PaymentPlan struct {
 	ID          int32
 	Name        string
+	Image       string
 	Description sql.NullString
+	Duration    string
 	Price       string
 	Features    []string
 	CreatedAt   time.Time
@@ -104,20 +106,21 @@ type RssfeedPost struct {
 }
 
 type Subscription struct {
-	ID                int32
-	UserID            sql.NullInt32
-	PlanID            sql.NullInt32
+	ID                uuid.UUID
+	UserID            int64
+	PlanID            int32
 	StartDate         time.Time
-	EndDate           sql.NullTime
+	EndDate           time.Time
 	Price             string
 	Status            string
-	TransactionID     sql.NullString
+	TransactionID     int64
 	PaymentMethod     sql.NullString
 	AuthorizationCode sql.NullString
 	CardLast4         sql.NullString
 	CardExpMonth      sql.NullString
 	CardExpYear       sql.NullString
 	CardType          sql.NullString
+	Currency          sql.NullString
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }

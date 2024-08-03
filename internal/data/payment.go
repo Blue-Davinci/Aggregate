@@ -2,11 +2,14 @@ package data
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"strconv"
 	"time"
 
 	"github.com/blue-davinci/aggregate/internal/database"
 	"github.com/blue-davinci/aggregate/internal/validator"
+	"github.com/google/uuid"
 )
 
 type PaymentOperation int8
@@ -14,6 +17,11 @@ type PaymentOperation int8
 const (
 	PaymentOperationInitialize PaymentOperation = iota
 	PaymentOperationVerify
+)
+
+var (
+	ErrTransactionDeclined  = errors.New("transaction declined")
+	ErrDuplicateTransaction = errors.New("duplicate transaction")
 )
 
 type PaymentsModel struct {
@@ -129,22 +137,48 @@ type InitializeResponse struct {
 
 type TransactionData struct {
 	User_ID     int64  `json:"-"`
-	Plan_ID     int64  `json:"plan_id"`
+	Plan_ID     int32  `json:"plan_id"`
 	Amount      int64  `json:"amount"`
 	Email       string `json:"email"`
 	CallBackURL string `json:"callback_url"`
 	Reference   string `json:"reference"`
 }
 
+// Payment_Plan struct represents all the info we will
+// return in relation to our subscription plans.
 type Payment_Plan struct {
 	ID          int32     `json:"id"`
 	Name        string    `json:"name"`
+	Image       string    `json:"image"`
 	Description string    `json:"description"`
+	Duration    string    `json:"duration"`
 	Price       int64     `json:"amount"`
 	Features    []string  `json:"features"`
 	Created_At  time.Time `json:"created_at"`
 	Updated_At  time.Time `json:"updated_at"`
 	Status      string    `json:"status"`
+}
+
+// Payment_Confirmation
+// id, user_id, plan_id, start_date, end_date, status, transaction_id;
+type Payment_Details struct {
+	ID                 uuid.UUID `json:"id"`
+	User_ID            int64     `json:"user_id"`
+	Plan_ID            int32     `json:"plan_id"`
+	Start_Date         time.Time `json:"start_date"`
+	End_Date           time.Time `json:"end_date"`
+	Price              int64     `json:"price"`
+	Status             string    `json:"status"`
+	TransactionID      int64     `json:"transaction_id"`
+	Payment_Method     string    `json:"payment_method"`
+	Authorization_Code string    `json:"authorization_code"`
+	Card_Last4         string    `json:"card_last4"`
+	Card_Exp_Month     string    `json:"card_exp_month"`
+	Card_Exp_Year      string    `json:"card_exp_year"`
+	Card_Type          string    `json:"card_type"`
+	Currency           string    `json:"currency"`
+	Created_At         time.Time `json:"created_at"`
+	Updated_At         time.Time `json:"updated_at"`
 }
 
 func ValidateTransactionData(v *validator.Validator, transactionData *TransactionData) {
@@ -163,9 +197,78 @@ func ValidateVerificationData(v *validator.Validator, transactionData *Transacti
 func (m *PaymentsModel) InitializeTransaction() {
 
 }
-func (m *PaymentsModel) CreateSubscription() {
-	// InsertPayment inserts a new payment into the database.
+func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	priceStr := strconv.FormatFloat(float64(payment_detail.Price), 'f', 2, 64)
+	queyresult, err := m.DB.CreateSubscription(ctx, database.CreateSubscriptionParams{
+		UserID:            payment_detail.User_ID,
+		PlanID:            payment_detail.Plan_ID,
+		StartDate:         payment_detail.Start_Date,
+		EndDate:           payment_detail.End_Date,
+		Price:             priceStr,
+		Status:            payment_detail.Status,
+		TransactionID:     payment_detail.TransactionID,
+		PaymentMethod:     sql.NullString{String: payment_detail.Payment_Method, Valid: payment_detail.Payment_Method != ""},
+		AuthorizationCode: sql.NullString{String: payment_detail.Authorization_Code, Valid: payment_detail.Authorization_Code != ""},
+		CardLast4:         sql.NullString{String: payment_detail.Card_Last4, Valid: payment_detail.Card_Last4 != ""},
+		CardExpMonth:      sql.NullString{String: payment_detail.Card_Exp_Month, Valid: payment_detail.Card_Exp_Month != ""},
+		CardExpYear:       sql.NullString{String: payment_detail.Card_Exp_Year, Valid: payment_detail.Card_Exp_Year != ""},
+		CardType:          sql.NullString{String: payment_detail.Card_Type, Valid: payment_detail.Card_Type != ""},
+		Currency:          sql.NullString{String: payment_detail.Currency, Valid: payment_detail.Currency != ""},
+	})
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "subscriptions_transaction_id_key"` ||
+			err.Error() == `pq: duplicate key value violates unique constraint "subscriptions_authorization_code_key"`:
+			return ErrDuplicateTransaction
+		default:
+			return err
+		}
+	}
+	// now fill in the payment_detail missing fields with our returned data
+	payment_detail.ID = queyresult.ID
+	payment_detail.Created_At = queyresult.CreatedAt
+	payment_detail.Updated_At = queyresult.UpdatedAt
+	// we are okay so we return nil
+	return nil
 }
+
+func (m *PaymentsModel) GetPaymentPlanByID(plan_ID int32) (*Payment_Plan, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	plan, err := m.DB.GetPaymentPlanByID(ctx, plan_ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	var payment_plan Payment_Plan
+	payment_plan.ID = plan.ID
+	payment_plan.Name = plan.Name
+	payment_plan.Image = plan.Image
+	payment_plan.Description = plan.Description.String
+	payment_plan.Duration = plan.Duration
+	priceStr := plan.Price
+	price, err := strconv.ParseFloat(priceStr, 64)
+	if err != nil {
+		return nil, err
+	}
+	payment_plan.Price = int64(price)
+	payment_plan.Features = plan.Features
+	payment_plan.Created_At = plan.CreatedAt
+	payment_plan.Updated_At = plan.UpdatedAt
+	payment_plan.Status = plan.Status
+	// we're good, we return the payment_plan
+	return &payment_plan, nil
+}
+
 func (m *PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -180,7 +283,9 @@ func (m *PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
 		var payment_plan Payment_Plan
 		payment_plan.ID = row.ID
 		payment_plan.Name = row.Name
+		payment_plan.Image = row.Image
 		payment_plan.Description = row.Description.String
+		payment_plan.Duration = row.Duration
 		priceStr := row.Price
 		price, err := strconv.ParseFloat(priceStr, 64)
 		if err != nil {

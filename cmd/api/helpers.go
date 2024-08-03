@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/blue-davinci/aggregate/internal/data"
 	"github.com/blue-davinci/aggregate/internal/jsonlog"
@@ -241,6 +242,32 @@ func (app *application) readIDFromQuery(r *http.Request, parameterName string) (
 		return uuid.Nil, errors.New("invalid id parameter")
 	}
 	return result, nil
+}
+
+func (app *application) returnEndDate(duration string, start_date time.Time) time.Time {
+	switch {
+	case duration == "day":
+		return start_date.AddDate(0, 0, 1)
+	case duration == "week":
+		return start_date.AddDate(0, 0, 7)
+	case duration == "month":
+		return start_date.AddDate(0, 1, 0)
+	case duration == "year":
+		return start_date.AddDate(1, 0, 0)
+	default:
+		return start_date
+	}
+}
+
+func (app *application) formatDate(date string) string {
+	// Parse the date string to a time.Time value.
+	d, err := time.Parse(time.RFC3339, date)
+	if err != nil {
+		app.logger.PrintError(err, nil)
+		return ""
+	}
+	// Return the date formatted in the "YYYY-MM-DD HH:MM:SS" layout.
+	return d.Format("2006-01-02 15:04:05")
 }
 
 // getEnvPath returns the path to the .env file based on the current working directory.

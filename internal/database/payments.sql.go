@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -17,37 +18,34 @@ const createSubscription = `-- name: CreateSubscription :one
 INSERT INTO subscriptions (
 		user_id, plan_id, start_date, end_date, price, status, 
 		transaction_id, payment_method, authorization_code, 
-		card_last4, card_exp_month, card_exp_year, card_type
+		card_last4, card_exp_month, card_exp_year, card_type, currency
 ) VALUES (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
 )
-RETURNING id, user_id, plan_id, start_date, end_date, status, transaction_id
+RETURNING id, created_at, updated_at
 `
 
 type CreateSubscriptionParams struct {
-	UserID            sql.NullInt32
-	PlanID            sql.NullInt32
+	UserID            int64
+	PlanID            int32
 	StartDate         time.Time
-	EndDate           sql.NullTime
+	EndDate           time.Time
 	Price             string
 	Status            string
-	TransactionID     sql.NullString
+	TransactionID     int64
 	PaymentMethod     sql.NullString
 	AuthorizationCode sql.NullString
 	CardLast4         sql.NullString
 	CardExpMonth      sql.NullString
 	CardExpYear       sql.NullString
 	CardType          sql.NullString
+	Currency          sql.NullString
 }
 
 type CreateSubscriptionRow struct {
-	ID            int32
-	UserID        sql.NullInt32
-	PlanID        sql.NullInt32
-	StartDate     time.Time
-	EndDate       sql.NullTime
-	Status        string
-	TransactionID sql.NullString
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (CreateSubscriptionRow, error) {
@@ -65,22 +63,39 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 		arg.CardExpMonth,
 		arg.CardExpYear,
 		arg.CardType,
+		arg.Currency,
 	)
 	var i CreateSubscriptionRow
+	err := row.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
+const getPaymentPlanByID = `-- name: GetPaymentPlanByID :one
+SELECT id, name, image, description, duration, price, features, created_at, updated_at, status
+FROM payment_plans
+WHERE id = $1 AND status = 'active'
+`
+
+func (q *Queries) GetPaymentPlanByID(ctx context.Context, id int32) (PaymentPlan, error) {
+	row := q.db.QueryRowContext(ctx, getPaymentPlanByID, id)
+	var i PaymentPlan
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
-		&i.PlanID,
-		&i.StartDate,
-		&i.EndDate,
+		&i.Name,
+		&i.Image,
+		&i.Description,
+		&i.Duration,
+		&i.Price,
+		pq.Array(&i.Features),
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.Status,
-		&i.TransactionID,
 	)
 	return i, err
 }
 
 const getPaymentPlans = `-- name: GetPaymentPlans :many
-SELECT id, name, description, price, features, created_at, updated_at, status
+SELECT id, name, image, description, duration, price, features, created_at, updated_at, status
 FROM payment_plans
 WHERE status = 'active'
 `
@@ -97,7 +112,9 @@ func (q *Queries) GetPaymentPlans(ctx context.Context) ([]PaymentPlan, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Image,
 			&i.Description,
+			&i.Duration,
 			&i.Price,
 			pq.Array(&i.Features),
 			&i.CreatedAt,

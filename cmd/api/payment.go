@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/blue-davinci/aggregate/internal/data"
 	"github.com/blue-davinci/aggregate/internal/validator"
@@ -33,7 +35,7 @@ func (app *application) getPaymentPlansHandler(w http.ResponseWriter, r *http.Re
 // and more importantly the authorization URL. We then write the response to the client.
 func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		PlanID      int64  `json:"plan_id"`
+		PlanID      int32  `json:"plan_id"`
 		Amount      int64  `json:"amount"`
 		CallBackURL string `json:"callback_url"`
 	}
@@ -58,6 +60,20 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 	if transactionData.CallBackURL == "" {
 		transactionData.CallBackURL = app.config.frontend.callback_url
 	}
+	// we verify that the plan is a valid one
+	plan, err := app.models.Payments.GetPaymentPlanByID(transactionData.Plan_ID)
+	if err != nil {
+		switch {
+		// if the plan is not found, we return a 404 error
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// we now set the amount into our transaction data
+	transactionData.Amount = plan.Price * 100 // we multiply it by 100 since the default for paystack is in cents
 	initializeResponse, err := app.transactionClient(transactionData, app.config.paystack.initializationurl, data.PaymentOperationInitialize)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -79,7 +95,7 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Reference string `json:"reference"`
-		Plan_ID   int64  `json:"plan_id"`
+		Plan_ID   int32  `json:"plan_id"`
 	}
 	err := app.readJSON(w, r, &input)
 	if err != nil {
@@ -100,6 +116,20 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 	}
 	verificationUrlEndpoint := fmt.Sprintf("%s%s", app.config.paystack.verificationurl, transactionData.Reference)
 	app.logger.PrintInfo("verification url", map[string]string{"url": verificationUrlEndpoint})
+
+	// we get the plan to fill in required data
+	plan, err := app.models.Payments.GetPaymentPlanByID(transactionData.Plan_ID)
+	if err != nil {
+		switch {
+		// if the plan is not found, we return a 404 error
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// we now send the transaction data to the transaction client to verify the transaction
 	verifyResponse, err := app.transactionClient(transactionData, verificationUrlEndpoint, data.PaymentOperationVerify)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -110,13 +140,69 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 		"message":   verifyResponse.VerifyResponse.Message,
 		"card_type": verifyResponse.VerifyResponse.Data.Authorization.CardType,
 	})
+	// we need to check verifyResponse.data.status to see if its "success" or "failed"
+	// and verifyResponse.data.gateway_response to see if its  "Approved" or "Declined"
+	if verifyResponse.VerifyResponse.Data.Status != "success" && verifyResponse.VerifyResponse.Data.GatewayResponse != "Approved" {
+		// we assume this is a failed transaction and return a 400 error
+		app.badRequestResponse(w, r, data.ErrTransactionDeclined)
+		return
+	}
 	// if the transaction was successful, we save the transaction data to the database
-	// ToDo: Impliment saving of transaction data to the database
-	// ToDo: Create go routine to send an email of payment success to the user, Maybe a reciept.
+	payment_detail := &data.Payment_Details{
+		User_ID:            user.ID,
+		Plan_ID:            transactionData.Plan_ID,
+		Start_Date:         time.Now().UTC(),
+		End_Date:           app.returnEndDate(plan.Duration, time.Now().UTC()),
+		Price:              verifyResponse.VerifyResponse.Data.Amount / 100,
+		Status:             "active",
+		TransactionID:      verifyResponse.VerifyResponse.Data.ID,
+		Payment_Method:     verifyResponse.VerifyResponse.Data.Channel,
+		Authorization_Code: verifyResponse.VerifyResponse.Data.Authorization.AuthorizationCode,
+		Card_Last4:         verifyResponse.VerifyResponse.Data.Authorization.Last4,
+		Card_Exp_Month:     verifyResponse.VerifyResponse.Data.Authorization.ExpMonth,
+		Card_Exp_Year:      verifyResponse.VerifyResponse.Data.Authorization.ExpYear,
+		Card_Type:          verifyResponse.VerifyResponse.Data.Authorization.CardType,
+		Currency:           verifyResponse.VerifyResponse.Data.Currency,
+	}
 
+	err = app.models.Payments.CreateSubscription(payment_detail)
+	// if we get a constraint validation on the transaction ID, we return a 400 error
+	// as we know we have already processed the same transaction.
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicateTransaction):
+			v.AddError("transaction", "a transaction with this reference already exists")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// ToDo: Create go routine to send an email of payment success to the user, Maybe a reciept.
+	app.background(func() {
+		data := map[string]any{
+			"UserName":        user.Name,
+			"TransactionID":   payment_detail.TransactionID,
+			"PlanName":        plan.Name,
+			"AmountPaid":      payment_detail.Price,
+			"Currency":        payment_detail.Currency,
+			"PaymentMethod":   payment_detail.Payment_Method,
+			"Date":            payment_detail.Start_Date,
+			"TransactionDate": app.formatDate(verifyResponse.VerifyResponse.Data.TransactionDate),
+			"GrandTotal":      payment_detail.Price,
+		}
+		app.logger.PrintInfo("Data DATA:", map[string]string{
+			"Date":      verifyResponse.VerifyResponse.Data.TransactionDate,
+			"Converted": app.formatDate(verifyResponse.VerifyResponse.Data.TransactionDate),
+		})
+		err = app.mailer.Send(user.Email, "subscription_reciept.tmpl", data)
+		if err != nil {
+			app.logger.PrintError(err, nil)
+		}
+	})
 	// We send back the transaction Data incase the frontend needs it as well as the verify response which
 	// the frontend may require.
-	err = app.writeJSON(w, http.StatusOK, envelope{"verification": verifyResponse, "transaction_data": transactionData}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"payment_details": payment_detail, "transaction_data": transactionData}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -176,7 +262,7 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 	} else {
 		paymentRequest = &data.VerifyResponse{}
 	}
-	app.logger.PrintInfo("payment request", map[string]string{"request": fmt.Sprintf("%+v", paymentRequest)})
+	//app.logger.PrintInfo("payment request", map[string]string{"request": fmt.Sprintf("%+v", paymentRequest)})
 	// get the response and decode it into our reciever
 	err = app.readJSONFromReader(resp.Body, &paymentRequest)
 	if err != nil {
