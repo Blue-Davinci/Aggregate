@@ -16,7 +16,9 @@ import (
 func (app *application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app.logger.PrintInfo("Authenticating request", map[string]string{
-			"host": r.Host,
+			"host":            r.Host,
+			"Request Method:": r.Method,
+			"Request URI:":    r.RequestURI,
 		})
 		// add the vary header to indicate to any caches that the response varies
 		// depending on the Authorization header.

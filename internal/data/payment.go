@@ -221,7 +221,7 @@ func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) erro
 	if err != nil {
 		switch {
 		case err.Error() == `pq: duplicate key value violates unique constraint "subscriptions_transaction_id_key"` ||
-			err.Error() == `pq: duplicate key value violates unique constraint "subscriptions_authorization_code_key"`:
+			err.Error() == `pq: duplicate key value violates unique constraint "subscriptions_transaction_id_authorization_code_key"`:
 			return ErrDuplicateTransaction
 		default:
 			return err

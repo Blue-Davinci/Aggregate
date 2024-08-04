@@ -60,6 +60,7 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 	if transactionData.CallBackURL == "" {
 		transactionData.CallBackURL = app.config.frontend.callback_url
 	}
+	app.logger.PrintInfo("callback url", map[string]string{"url": transactionData.CallBackURL})
 	// we verify that the plan is a valid one
 	plan, err := app.models.Payments.GetPaymentPlanByID(transactionData.Plan_ID)
 	if err != nil {
@@ -72,8 +73,16 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 		}
 		return
 	}
+	if plan.Price != transactionData.Amount {
+		// if the amount is not the same as the plan price, we return a 400 error
+		app.badRequestResponse(w, r, errors.New("we could not process the data dur to a discrepancy"))
+		return
+	}
 	// we now set the amount into our transaction data
-	transactionData.Amount = plan.Price * 100 // we multiply it by 100 since the default for paystack is in cents
+	transactionData.Amount *= 100 * 100 // we multiply it by 100 since the default for paystack is in cents
+	app.logger.PrintInfo("amount", map[string]string{"amount": fmt.Sprintf("%d", transactionData.Amount),
+		"plan":       plan.Name,
+		"plan price": fmt.Sprintf("%d", plan.Price)})
 	initializeResponse, err := app.transactionClient(transactionData, app.config.paystack.initializationurl, data.PaymentOperationInitialize)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -129,6 +138,8 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 		}
 		return
 	}
+	//quick fill for the transactio data
+	transactionData.Amount = plan.Price
 	// we now send the transaction data to the transaction client to verify the transaction
 	verifyResponse, err := app.transactionClient(transactionData, verificationUrlEndpoint, data.PaymentOperationVerify)
 	if err != nil {
@@ -144,7 +155,8 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 	// and verifyResponse.data.gateway_response to see if its  "Approved" or "Declined"
 	if verifyResponse.VerifyResponse.Data.Status != "success" && verifyResponse.VerifyResponse.Data.GatewayResponse != "Approved" {
 		// we assume this is a failed transaction and return a 400 error
-		app.badRequestResponse(w, r, data.ErrTransactionDeclined)
+		failedTransaction := fmt.Sprintf("error: %s\nplan: %s\nemail: %s", data.ErrTransactionDeclined.Error(), plan.Name, user.Email)
+		app.badRequestResponse(w, r, errors.New(failedTransaction))
 		return
 	}
 	// if the transaction was successful, we save the transaction data to the database
@@ -164,7 +176,7 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 		Card_Type:          verifyResponse.VerifyResponse.Data.Authorization.CardType,
 		Currency:           verifyResponse.VerifyResponse.Data.Currency,
 	}
-
+	//TODO: CHECK IF USER HAS AN EXISTING SUBSCRIPTION AND UPDATE IT
 	err = app.models.Payments.CreateSubscription(payment_detail)
 	// if we get a constraint validation on the transaction ID, we return a 400 error
 	// as we know we have already processed the same transaction.
@@ -226,6 +238,7 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 	// if the operation is an initialization, we do a quick byte conversion of the
 	// body and set up the request to be a POST request
 	if paymentOperation == data.PaymentOperationInitialize {
+		app.logger.PrintInfo("transaction data", map[string]string{"Transaction data Amount": fmt.Sprintf("%d", transactionData.Amount)})
 		jsonData, err := app.covertToByteArray(transactionData)
 		if err != nil {
 			app.logger.PrintError(err, nil)
