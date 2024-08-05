@@ -78,6 +78,13 @@ func (app *application) inactiveAccountResponse(w http.ResponseWriter, r *http.R
 	app.errorResponse(w, r, http.StatusForbidden, message)
 }
 
+// The limitationResponse() method will be used to send a 403 Forbidden status if user
+// is authenticated and not subscribed but has reached their limit for a particular action
+func (app *application) limitationResponse(w http.ResponseWriter, r *http.Request) {
+	message := "you have reached your unsubscribed limit for this action"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
+
 // The notFoundResponse() method will be used to send a 404 Not Found status code and
 // JSON response to the client.
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {

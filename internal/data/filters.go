@@ -1,9 +1,10 @@
 package data
 
 import (
-	"github.com/blue-davinci/aggregate/internal/validator"
 	"math"
 	"strings"
+
+	"github.com/blue-davinci/aggregate/internal/validator"
 )
 
 // Define a new Metadata struct for holding the pagination metadata.
@@ -67,6 +68,7 @@ func (f Filters) offset() int {
 // up a float to the nearest integer. So, for example, if there were 12 records in total
 // and a page size of 5, the last page value would be math.Ceil(12/5) = 3.
 func calculateMetadata(totalRecords, page, pageSize int) Metadata {
+	//fmt.Printf("calculateMetadata called with totalRecords: %d, page: %d, pageSize: %d\n", totalRecords, page, pageSize)
 	if totalRecords == 0 {
 		// Note that we return an empty Metadata struct if there are no records.
 		return Metadata{}

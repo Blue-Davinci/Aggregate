@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -181,6 +182,23 @@ type Payment_Details struct {
 	Updated_At         time.Time `json:"updated_at"`
 }
 
+// Payment History struct represents a user's payment history.
+// And includes data about their subscription
+type PaymentHistory struct {
+	Subscription   Subscription `json:"subscription"`
+	Plan_Name      string       `json:"plan_name"`
+	Plan_Image     string       `json:"plan_image"`
+	Plan_Duration  string       `json:"plan_duration"`
+	Transaction_ID int64        `json:"transaction_id"`
+	Payment_Method string       `json:"payment_method"`
+	Card_Last4     string       `json:"card_last4"`
+	Card_Exp_Month string       `json:"card_exp_month"`
+	Card_Exp_Year  string       `json:"card_exp_year"`
+	Card_Type      string       `json:"card_type"`
+	Currency       string       `json:"currency"`
+	Created_At     time.Time    `json:"created_at"`
+}
+
 // Subscription struct represents a user's subscription to a plan.
 type Subscription struct {
 	ID         uuid.UUID `json:"id"`
@@ -214,7 +232,6 @@ func (m *PaymentsModel) GetSubscriptionByID(userID int64) (*Subscription, error)
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	subscription, err := m.DB.GetSubscriptionByID(ctx, userID)
 	if err != nil {
 		switch {
@@ -282,6 +299,60 @@ func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) erro
 	payment_detail.Updated_At = queyresult.UpdatedAt
 	// we are okay so we return nil
 	return nil
+}
+
+// GetAllSubscriptionsByID() returns the subscription history of a user.
+// It also supports pagination and metadata reporting.
+func (m *PaymentsModel) GetAllSubscriptionsByID(userID int64, filters Filters) ([]*PaymentHistory, Metadata, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	rows, err := m.DB.GetAllSubscriptionsByID(ctx, database.GetAllSubscriptionsByIDParams{
+		UserID: userID,
+		Limit:  int32(filters.limit()),
+		Offset: int32(filters.offset()),
+	})
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	totalRecords := 0
+	payment_histories := []*PaymentHistory{}
+	for _, row := range rows {
+		var payment_history PaymentHistory
+		totalRecords = int(row.TotalRecords)
+		payment_history.Transaction_ID = row.TransactionID
+		payment_history.Payment_Method = row.PaymentMethod.String
+		payment_history.Card_Last4 = row.CardLast4.String
+		payment_history.Card_Exp_Month = row.CardExpMonth.String
+		payment_history.Card_Exp_Year = row.CardExpYear.String
+		payment_history.Card_Type = row.CardType.String
+		payment_history.Currency = row.Currency.String
+		payment_history.Created_At = row.CreatedAt
+		// plan details
+		payment_history.Plan_Name = row.PlanName
+		payment_history.Plan_Image = row.PlanImage
+		payment_history.Plan_Duration = row.PlanDuration
+		// fill in the subscription details
+		var subscription Subscription
+		subscription.ID = row.ID
+		subscription.User_ID = row.UserID
+		subscription.Plan_ID = row.PlanID
+		subscription.Start_Date = row.StartDate
+		subscription.End_Date = row.EndDate
+		priceStr := row.Price
+		price, err := strconv.ParseFloat(priceStr, 64)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+		subscription.Price = int64(price)
+		subscription.Status = row.Status
+		payment_history.Subscription = subscription
+		payment_histories = append(payment_histories, &payment_history)
+	}
+	fmt.Println("Total rows: ", totalRecords)
+	// calculate the metadata
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	return payment_histories, metadata, nil
 }
 
 // GetPaymentDetailsByID will return an existing plan by its ID.

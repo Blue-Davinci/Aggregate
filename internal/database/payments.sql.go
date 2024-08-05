@@ -70,6 +70,112 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 	return i, err
 }
 
+const getAllSubscriptionsByID = `-- name: GetAllSubscriptionsByID :many
+SELECT 
+    count(*) OVER() as total_records,
+    s.id, 
+    s.user_id, 
+    s.plan_id, 
+    p.name as plan_name,
+    p.image as plan_image,
+    p.duration as plan_duration,
+    s.start_date, 
+    s.end_date, 
+    s.price, 
+    s.status, 
+    s.transaction_id, 
+    s.payment_method, 
+    s.card_last4, 
+    s.card_exp_month, 
+    s.card_exp_year, 
+    s.card_type, 
+    s.currency, 
+    s.created_at, 
+    s.updated_at
+FROM 
+    subscriptions s
+JOIN 
+    payment_plans p ON s.plan_id = p.id
+WHERE 
+    s.user_id = $1 
+ORDER BY 
+    s.start_date DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetAllSubscriptionsByIDParams struct {
+	UserID int64
+	Limit  int32
+	Offset int32
+}
+
+type GetAllSubscriptionsByIDRow struct {
+	TotalRecords  int64
+	ID            uuid.UUID
+	UserID        int64
+	PlanID        int32
+	PlanName      string
+	PlanImage     string
+	PlanDuration  string
+	StartDate     time.Time
+	EndDate       time.Time
+	Price         string
+	Status        string
+	TransactionID int64
+	PaymentMethod sql.NullString
+	CardLast4     sql.NullString
+	CardExpMonth  sql.NullString
+	CardExpYear   sql.NullString
+	CardType      sql.NullString
+	Currency      sql.NullString
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) GetAllSubscriptionsByID(ctx context.Context, arg GetAllSubscriptionsByIDParams) ([]GetAllSubscriptionsByIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllSubscriptionsByID, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllSubscriptionsByIDRow
+	for rows.Next() {
+		var i GetAllSubscriptionsByIDRow
+		if err := rows.Scan(
+			&i.TotalRecords,
+			&i.ID,
+			&i.UserID,
+			&i.PlanID,
+			&i.PlanName,
+			&i.PlanImage,
+			&i.PlanDuration,
+			&i.StartDate,
+			&i.EndDate,
+			&i.Price,
+			&i.Status,
+			&i.TransactionID,
+			&i.PaymentMethod,
+			&i.CardLast4,
+			&i.CardExpMonth,
+			&i.CardExpYear,
+			&i.CardType,
+			&i.Currency,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPaymentPlanByID = `-- name: GetPaymentPlanByID :one
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status
 FROM payment_plans

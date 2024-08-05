@@ -25,6 +25,10 @@ func (app *application) routes() http.Handler {
 	globalMiddleware := alice.New(app.recoverPanic, app.metrics, app.authenticate).Then
 	// Dynamic Middleware, these will apply to only select routes
 	dynamicMiddleware := alice.New(app.requireAuthenticatedUser, app.requireActivatedUser)
+	// Limitations Middleware, this will apply to specific routes that are capped by the limitations
+	// and will sit behind the dynamic middleware.
+	limitationsMiddleware := alice.New(app.limitations)
+	// Apply the global middleware to the router
 	router.Use(globalMiddleware)
 	// Make our categorized routes
 	v1Router := chi.NewRouter()
@@ -35,7 +39,7 @@ func (app *application) routes() http.Handler {
 	v1Router.Mount("/top", app.statisticRoutes())
 
 	v1Router.Mount("/users", app.userRoutes(&dynamicMiddleware))
-	v1Router.Mount("/feeds", app.feedRoutes(&dynamicMiddleware))
+	v1Router.Mount("/feeds", app.feedRoutes(&dynamicMiddleware, &limitationsMiddleware))
 	v1Router.Mount("/search-options", app.searchOptionsRoutes(&dynamicMiddleware))
 	v1Router.Mount("/api", app.apiKeyRoutes())
 	v1Router.Mount("/subscriptions", app.subscriptionRoutes(&dynamicMiddleware))
@@ -77,10 +81,10 @@ func (app *application) userRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 // feedRoutes() provides a router for the /feeds API endpoint.
 // We pass the pointer to the dynamic middleware here because some
 // Of the routes require verified and activated users
-func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
+func (app *application) feedRoutes(dynamicMiddleware, limitationsMiddleware *alice.Chain) chi.Router {
 	feedRoutes := chi.NewRouter()
 	//authenticated/activated endpoints
-	feedRoutes.With(dynamicMiddleware.Then).Post("/", app.createFeedHandler)
+	feedRoutes.With(dynamicMiddleware.Then).With(limitationsMiddleware.Then).Post("/", app.createFeedHandler)
 	// routes to get favorited posts, favorite and unfavorite posts as well.
 	feedRoutes.With(dynamicMiddleware.Then).Get("/favorites", app.GetRSSFavoritePostsForUserHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Post("/favorites", app.CreateRSSFavoritePostHandler)
@@ -95,7 +99,7 @@ func (app *application) feedRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	feedRoutes.With(dynamicMiddleware.Then).Delete("/follow/{feedID}", app.deleteFeedFollowHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts", app.getFollowedRssPostsForUserHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts/{postID}", app.getRSSFeedByIDHandler)
-	feedRoutes.With(dynamicMiddleware.Then).Post("/follow/posts/comments", app.createCommentHandler)
+	feedRoutes.With(dynamicMiddleware.Then).With(limitationsMiddleware.Then).Post("/follow/posts/comments", app.createCommentHandler)
 
 	feedRoutes.With(dynamicMiddleware.Then).Get("/follow/posts/comments/{postID}", app.getCommentsForPostHandler)
 	feedRoutes.With(dynamicMiddleware.Then).Patch("/follow/posts/comments", app.updateUserCommentHandler)
@@ -146,6 +150,7 @@ func (app *application) apiKeyRoutes() chi.Router {
 // It is responsible for the subscription/paments for users
 func (app *application) subscriptionRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	subscriptionRoutes := chi.NewRouter()
+	subscriptionRoutes.With(dynamicMiddleware.Then).Get("/", app.GetAllSubscriptionsByIDHandler)
 	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/initialize", app.initializeTransactionHandler)
 	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/verify", app.verifyTransactionHandler)
 	// plans is free to everyone

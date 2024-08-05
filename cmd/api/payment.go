@@ -26,6 +26,39 @@ func (app *application) getPaymentPlansHandler(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// GetAllSubscriptionsByIDHandler() returns the payment/subscription history of a user.
+// Returning all transactions made by the user in addition to each subscription's info.
+func (app *application) GetAllSubscriptionsByIDHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		data.Filters
+	}
+	//validate if queries are provided
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	//get the pagesizes as ints and set to the embedded struct
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	// get the sort values falling back to "id" if it is not provided
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	// Add the supported sort values for this endpoint to the sort safelist.
+	input.Filters.SortSafelist = []string{"id", "-id"}
+	// Perform validation
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	subscriptions, metadata, err := app.models.Payments.GetAllSubscriptionsByID(app.contextGetUser(r).ID, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"subscriptions": subscriptions, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // initializeTransactionHandler() is a handler that creates an intent for the transaction
 // we get in the plan ID, amount in cts and a callback URL. If the callback URL is not
 // provided, we default to the internal callback URL. The plan ID keeps track of the plan
@@ -62,14 +95,20 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 	}
 	app.logger.PrintInfo("callback url", map[string]string{"url": transactionData.CallBackURL})
 	// check if a user has an existing subscription, if they do, we return a 409 conflict error
-	_, err = app.models.Payments.GetSubscriptionByID(user.ID)
+	subscription, err := app.models.Payments.GetSubscriptionByID(user.ID)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
-			app.editConflictResponse(w, r)
+			// we ignore this error, means a user deos not have a subscription
 		default:
 			app.serverErrorResponse(w, r, err)
+			return
 		}
+	}
+	// if the user has a subscription, we return a 409 conflict error
+	if subscription != nil {
+		v.AddError("transaction", "user already has a subscription")
+		app.failedConstraintValidation(w, r, v.Errors)
 		return
 	}
 	// if user has no sub, we verify that the provided plan is a valid one
@@ -194,7 +233,7 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrDuplicateTransaction):
-			v.AddError("transaction", "a transaction with this reference already exists")
+			v.AddError("transaction", "[RP-T] An error occurred with your transaction. Please try again. If the issue persists, please contact support with this message.")
 			app.failedValidationResponse(w, r, v.Errors)
 		default:
 			app.serverErrorResponse(w, r, err)
@@ -214,10 +253,11 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 			"TransactionDate": app.formatDate(verifyResponse.VerifyResponse.Data.TransactionDate),
 			"GrandTotal":      payment_detail.Price,
 		}
-		app.logger.PrintInfo("Data DATA:", map[string]string{
+		/*app.logger.PrintInfo("Data DATA:", map[string]string{
 			"Date":      verifyResponse.VerifyResponse.Data.TransactionDate,
 			"Converted": app.formatDate(verifyResponse.VerifyResponse.Data.TransactionDate),
 		})
+		*/
 		err = app.mailer.Send(user.Email, "subscription_reciept.tmpl", data)
 		if err != nil {
 			app.logger.PrintError(err, nil)

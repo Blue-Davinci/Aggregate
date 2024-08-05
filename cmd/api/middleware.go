@@ -138,3 +138,49 @@ func (app *application) metrics(next http.Handler) http.Handler {
 
 	})
 }
+
+func (app *application) limitations(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the user from the request context.
+		user := app.contextGetUser(r)
+		// now we check if the user has an active subscription, if they do, for now
+		// we will just let them through and execute the next handler in the chain.
+		app.logger.PrintInfo("Checking user limitations", map[string]string{
+			"User ID": strconv.FormatInt(user.ID, 10),
+		})
+		_, err := app.models.Payments.GetSubscriptionByID(user.ID)
+		if err != nil {
+			// if the user does not have a subscription...
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				// this means they do not have a subscription and we should check if they have exceeded their limits.
+				limitations, err := app.models.Limitations.GetUserLimitations(user.ID)
+				if err != nil {
+					app.serverErrorResponse(w, r, err)
+					return
+				}
+				// check if the user has exceeded their feed limit
+				if limitations.Created_Feeds >= int64(app.config.limitations.maxFeedsCreated) {
+					app.limitationResponse(w, r)
+					return
+				}
+				// check if the user has exceeded their followed feed limit
+				if limitations.Followed_Feeds >= int64(app.config.limitations.maxFeedsFollowed) {
+					app.limitationResponse(w, r)
+					return
+				}
+				// check if the user has exceeded their comments limit
+				if limitations.Comments_Today >= int64(app.config.limitations.maxComments) {
+					app.limitationResponse(w, r)
+					return
+				}
+			default:
+				// this means there was an error and we should return a server error
+				app.serverErrorResponse(w, r, err)
+				return
+			}
+		}
+		// if the user has a subscription or has not exceeded their limitations, we call the next handler in the chain.
+		next.ServeHTTP(w, r)
+	})
+}

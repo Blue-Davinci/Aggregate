@@ -22,6 +22,7 @@ type Models struct {
 	SearchOptions SearchOptionsDataModel
 	Comments      CommentsModel
 	Payments      PaymentsModel
+	Limitations   LimitationsModel
 	//feed models
 }
 
@@ -36,5 +37,6 @@ func NewModels(db *database.Queries) Models {
 		SearchOptions: SearchOptionsDataModel{DB: db},
 		Comments:      CommentsModel{DB: db},
 		Payments:      PaymentsModel{DB: db},
+		Limitations:   LimitationsModel{DB: db},
 	}
 }
