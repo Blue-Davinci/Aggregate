@@ -61,7 +61,18 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 		transactionData.CallBackURL = app.config.frontend.callback_url
 	}
 	app.logger.PrintInfo("callback url", map[string]string{"url": transactionData.CallBackURL})
-	// we verify that the plan is a valid one
+	// check if a user has an existing subscription, if they do, we return a 409 conflict error
+	_, err = app.models.Payments.GetSubscriptionByID(user.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// if user has no sub, we verify that the provided plan is a valid one
 	plan, err := app.models.Payments.GetPaymentPlanByID(transactionData.Plan_ID)
 	if err != nil {
 		switch {
@@ -75,11 +86,11 @@ func (app *application) initializeTransactionHandler(w http.ResponseWriter, r *h
 	}
 	if plan.Price != transactionData.Amount {
 		// if the amount is not the same as the plan price, we return a 400 error
-		app.badRequestResponse(w, r, errors.New("we could not process the data dur to a discrepancy"))
+		app.badRequestResponse(w, r, errors.New("we could not process the data due to a discrepancy"))
 		return
 	}
 	// we now set the amount into our transaction data
-	transactionData.Amount *= 100 * 100 // we multiply it by 100 since the default for paystack is in cents
+	transactionData.Amount *= 100 * 100 // we multiply it by 100*100 since the default for paystack is in cents
 	app.logger.PrintInfo("amount", map[string]string{"amount": fmt.Sprintf("%d", transactionData.Amount),
 		"plan":       plan.Name,
 		"plan price": fmt.Sprintf("%d", plan.Price)})
@@ -176,7 +187,7 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 		Card_Type:          verifyResponse.VerifyResponse.Data.Authorization.CardType,
 		Currency:           verifyResponse.VerifyResponse.Data.Currency,
 	}
-	//TODO: CHECK IF USER HAS AN EXISTING SUBSCRIPTION AND UPDATE IT
+
 	err = app.models.Payments.CreateSubscription(payment_detail)
 	// if we get a constraint validation on the transaction ID, we return a 400 error
 	// as we know we have already processed the same transaction.
@@ -190,7 +201,7 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 		}
 		return
 	}
-	// ToDo: Create go routine to send an email of payment success to the user, Maybe a reciept.
+	// We are good, so we send an email acknowledgment to the user.
 	app.background(func() {
 		data := map[string]any{
 			"UserName":        user.Name,
@@ -212,8 +223,8 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 			app.logger.PrintError(err, nil)
 		}
 	})
-	// We send back the transaction Data incase the frontend needs it as well as the verify response which
-	// the frontend may require.
+	// We send back the transaction and Payment details Data back incase the frontend needs it
+	// maybe for items such as reciept generation etc.
 	err = app.writeJSON(w, http.StatusOK, envelope{"payment_details": payment_detail, "transaction_data": transactionData}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

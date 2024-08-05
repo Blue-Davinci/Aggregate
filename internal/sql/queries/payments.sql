@@ -17,3 +17,8 @@ WHERE status = 'active';
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status
 FROM payment_plans
 WHERE id = $1 AND status = 'active';
+
+-- name: GetSubscriptionByID :one
+SELECT id, user_id, plan_id, start_date, end_date, price, status
+FROM subscriptions
+WHERE user_id = $1 AND status = 'active' AND end_date > NOW();

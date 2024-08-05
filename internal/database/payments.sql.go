@@ -133,3 +133,34 @@ func (q *Queries) GetPaymentPlans(ctx context.Context) ([]PaymentPlan, error) {
 	}
 	return items, nil
 }
+
+const getSubscriptionByID = `-- name: GetSubscriptionByID :one
+SELECT id, user_id, plan_id, start_date, end_date, price, status
+FROM subscriptions
+WHERE user_id = $1 AND status = 'active' AND end_date > NOW()
+`
+
+type GetSubscriptionByIDRow struct {
+	ID        uuid.UUID
+	UserID    int64
+	PlanID    int32
+	StartDate time.Time
+	EndDate   time.Time
+	Price     string
+	Status    string
+}
+
+func (q *Queries) GetSubscriptionByID(ctx context.Context, userID int64) (GetSubscriptionByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getSubscriptionByID, userID)
+	var i GetSubscriptionByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PlanID,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Price,
+		&i.Status,
+	)
+	return i, err
+}

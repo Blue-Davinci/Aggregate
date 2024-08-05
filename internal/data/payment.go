@@ -169,24 +169,38 @@ type Payment_Details struct {
 	End_Date           time.Time `json:"end_date"`
 	Price              int64     `json:"price"`
 	Status             string    `json:"status"`
-	TransactionID      int64     `json:"transaction_id"`
+	TransactionID      int64     `json:"-"`
 	Payment_Method     string    `json:"payment_method"`
-	Authorization_Code string    `json:"authorization_code"`
+	Authorization_Code string    `json:"-"`
 	Card_Last4         string    `json:"card_last4"`
-	Card_Exp_Month     string    `json:"card_exp_month"`
-	Card_Exp_Year      string    `json:"card_exp_year"`
+	Card_Exp_Month     string    `json:"-"`
+	Card_Exp_Year      string    `json:"-"`
 	Card_Type          string    `json:"card_type"`
 	Currency           string    `json:"currency"`
 	Created_At         time.Time `json:"created_at"`
 	Updated_At         time.Time `json:"updated_at"`
 }
 
+// Subscription struct represents a user's subscription to a plan.
+type Subscription struct {
+	ID         uuid.UUID `json:"id"`
+	User_ID    int64     `json:"user_id"`
+	Plan_ID    int32     `json:"plan_id"`
+	Start_Date time.Time `json:"start_date"`
+	End_Date   time.Time `json:"end_date"`
+	Price      int64     `json:"price"`
+	Status     string    `json:"status"`
+}
+
+// ValidateTransactionData will validate the initialization transaction data provided by the client.
 func ValidateTransactionData(v *validator.Validator, transactionData *TransactionData) {
 	//amount
 	v.Check(transactionData.Amount != 0, "amount", "must be varied")
 	// plan id
 	v.Check(transactionData.Plan_ID != 0, "plan_id", "must be provided")
 }
+
+// ValidateVerificationData will validate the validation transaction data provided by the client.
 func ValidateVerificationData(v *validator.Validator, transactionData *TransactionData) {
 	//amount
 	v.Check(transactionData.Reference != "", "reference", "must be varied")
@@ -194,9 +208,44 @@ func ValidateVerificationData(v *validator.Validator, transactionData *Transacti
 	v.Check(transactionData.Plan_ID != 0, "plan_id", "must be provided")
 }
 
-func (m *PaymentsModel) InitializeTransaction() {
+// GetSubscriptionByID will return a user's current subscription if it exists.
+// We take in a user's ID and return a pointer to a Subscription and an error.
+func (m *PaymentsModel) GetSubscriptionByID(userID int64) (*Subscription, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
+	subscription, err := m.DB.GetSubscriptionByID(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	var userSub Subscription
+	userSub.ID = subscription.ID
+	userSub.User_ID = subscription.UserID
+	userSub.Plan_ID = subscription.PlanID
+	userSub.Start_Date = subscription.StartDate
+	userSub.End_Date = subscription.EndDate
+	priceStr := subscription.Price
+	price, err := strconv.ParseFloat(priceStr, 64)
+	if err != nil {
+		return nil, err
+	}
+	userSub.Status = subscription.Status
+	userSub.Price = int64(price)
+	// we're good, we return the subscription
+	return &userSub, nil
 }
+
+// CreateSubscription will create a new subscription for a user.
+// This takes in payment details provided from the client and is only activated when
+// the payment is successful. We return an error if the transaction fails.
+// We also return an error if we detect a pre-existing transaction/auth code
+// which denotes an already existing and active subscription.
 func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -235,6 +284,7 @@ func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) erro
 	return nil
 }
 
+// GetPaymentDetailsByID will return an existing plan by its ID.
 func (m *PaymentsModel) GetPaymentPlanByID(plan_ID int32) (*Payment_Plan, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -269,6 +319,7 @@ func (m *PaymentsModel) GetPaymentPlanByID(plan_ID int32) (*Payment_Plan, error)
 	return &payment_plan, nil
 }
 
+// GetPaymentPlans will return all the available payment plans.
 func (m *PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
