@@ -31,6 +31,7 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 - [Deployment](#deployment)
 - [Usage](#usage)
 - [Algo](#algo)
+- [Payment](#payment)
 - [Built Using](#built_using)
 - [API Endpoints](#endpoints)
 - [TODO](./TODO.md)
@@ -160,6 +161,10 @@ the available commands for a quick lookup.
 - **~~cors-trusted-origins [value]~~:** Trusted CORS origins (space separated)
 - **notifier-interval [int64]:** Interval in minutes for the notifier to fetch new notifications (default 10)
 - **notifier-delete-interval [int64]:** Interval in minutes for the notifier to delete old notifications (default 100)
+- **callback_url [string]:** Represents the url which the payment gateway will navigate to after a transaction.
+- **maxFeedsCreated [int64]:** A limitation flag that sets the max number of feeds a free tier user can create
+- **maxFeedsFollowed [int64]:** A limitation flag that sets the max number of feeds a free tier user can follow
+- **maxComments [int64]:** A limitation flag that sets the max number of comments a free tier user can make
 
 Using `make run`, will run the API with a default connection string located 
 in `cmd\api\.env`. If you're using `powershell`, you need to load the values otherwise you will get
@@ -251,6 +256,16 @@ Below are all the end points for the API and a high level description of what th
 30. **GET /search-options/feeds:** Get all available feeds to populate your search filter.
 
 31. **GET /search-options/feed-type:** Get all available feed-type to populate your search filters.
+
+32. **GET /subscriptions:** Get all transactional/subscriptional data for a specific users
+
+33. **POST /subscriptions/initialize:** Initializes a subscription intent, which will return a redirect to the payment gateway
+
+34. **POST /subscriptions/verify:** Verifies a transation made by a specific user via the gateway sent back from the init request
+
+35. **GET /subscriptions/plans:** Gets  back all subscription plans supported by the app.
+
+36. **POST /subscriptions/plans:** Add a subscription plan including details such as features, prices and more.
 
 <hr />
 
@@ -350,6 +365,18 @@ Where:
 - Feel free to update the weights and the decay constant as per the requirements. The random factor ensures that users with minimal activity don't end up with identical scores.
 - This is the **v3** edition of the above algo.
 
+## 💳 Payment <a name = "Payment"></a>
+This application uses Pay-Stack to handle payments. For the setup, you will need to:
+1. Register to [paystack](https://paystack.com)
+
+2. Get the Paystack `API` and add the following to the `.env` file in the `cmd\api` dir as below:
+```bash
+PAYSTACK_SECRET_KEY=xxxx-paysatck-api-xxxxxxx
+```
+3. That is all you need for the setup. The paystack API works on the basis of an initialization and verification which can be done via a `webhook` or `poll`.
+
+4. As it works in tandem with the app's **Limitation** parameters, you can change the parameters by using the **limitation** `flags` already listed above.
+
 ## 🚀 Deployment <a name = "deployment"></a>
 
 This application can be deployed using Docker and Docker Compose. Here are the steps to do so:
@@ -386,6 +413,7 @@ docker pull ghcr.io/blue-davinci/aggregate:latest
 ## ⛏️ Built Using <a name = "built_using"></a>
 - [Go](https://golang.org/) - Backend
 - [PostgreSQL](https://www.postgresql.org/) - Database
+- [Paystack](https://paystack.com) - Payment processing
 - [SQLC](https://github.com/kyleconroy/sqlc) - Generate type safe Go from SQL
 - [Goose](https://github.com/pressly/goose) - Database migration tool
 - [HTML/CSS](https://developer.mozilla.org/en-US/docs/Web/HTML) - Templates
