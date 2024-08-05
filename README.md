@@ -377,6 +377,8 @@ PAYSTACK_SECRET_KEY=xxxx-paysatck-api-xxxxxxx
 
 4. As it works in tandem with the app's **Limitation** parameters, you can change the parameters by using the **limitation** `flags` already listed above.
 
+**Please Note:** The application also supports payments through **Mobile Money** in addition to supported Cards.
+
 ## 🚀 Deployment <a name = "deployment"></a>
 
 This application can be deployed using Docker and Docker Compose. Here are the steps to do so:
