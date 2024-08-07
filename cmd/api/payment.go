@@ -288,7 +288,7 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 	var err error
 	// if the operation is an initialization, we do a quick byte conversion of the
 	// body and set up the request to be a POST request
-	if paymentOperation == data.PaymentOperationInitialize {
+	if paymentOperation == data.PaymentOperationInitialize || paymentOperation == data.PaymentOperationRecurring {
 		app.logger.PrintInfo("transaction data", map[string]string{"Transaction data Amount": fmt.Sprintf("%d", transactionData.Amount)})
 		jsonData, err := app.covertToByteArray(transactionData)
 		if err != nil {
@@ -337,4 +337,89 @@ func (app *application) transactionClient(transactionData *data.TransactionData,
 		return &data.UnifiedPaymentResponse{InitializeResponse: *paymentRequest.(*data.InitializeResponse)}, nil
 	}
 	return &data.UnifiedPaymentResponse{VerifyResponse: *paymentRequest.(*data.VerifyResponse)}, nil
+}
+
+// autoSubscriptionHandler() should handle recurring charges on a subscribers account.
+// It should start by selecting all accounts whose subscription is due for renewal.
+// For each of those accounts, we will need the account email, subscription auth
+// and the amount to recharge. We will then use this information to send the data
+// using our pre-existing client to the initialization endpoint.
+// We will then check the status, checking if the transaction is paused. If it's paused
+// or even failed, we will add it to our table from where the frontend will poll
+// and send a notification to the user. If the transaction is successful, we will
+// add a new subscription and update the challanged item, whether succesful or failed.
+// If succesful, send an acknowledgement email to user, if not, send a checkup email instead.
+func (app *application) autoSubscriptionHandler() error {
+	app.logger.PrintInfo("auto subscription handler", nil)
+	//setup filters
+	var input struct{ data.Filters }
+	input.Filters.Page = app.readInt(nil, "page", 1, nil)
+	input.Filters.PageSize = app.readInt(nil, "page_size", 5, nil)
+	// get all subscriptions that are due for renewal
+	subscriptions, _, err := app.models.Payments.GetAllExpiredSubscriptions(input.Filters)
+	if err != nil {
+		return err
+	}
+	app.logger.PrintInfo("---subscriptions", map[string]string{"subscriptions": "in this"})
+	// for each subscription, we will send a request to the payment client,
+	// using the charge authorization endpoint instead.
+	for _, subscription := range subscriptions {
+		app.logger.PrintInfo("subscription", map[string]string{"email": subscription.User_Email, "plan": subscription.Authorization_Code})
+		// each item is a subscription, so we concert to a transacyion data
+		err := app.processRecurringSubscription(subscription)
+		if err != nil {
+			app.logger.PrintError(err, nil)
+			return err
+		}
+	}
+	return nil
+}
+
+func (app *application) processRecurringSubscription(subscription *data.RecurringSubscription) error {
+	transactionData := &data.TransactionData{
+		Email:              subscription.User_Email,
+		Amount:             subscription.Subscription.Price,
+		Authorization_Code: subscription.Authorization_Code,
+	}
+	// it will use a post request, and will feed a new charge auth url instead
+	chargeAuthResponse, err := app.transactionClient(transactionData, app.config.paystack.chargeauthorizationurl, data.PaymentOperationRecurring)
+	if err != nil {
+		app.logger.PrintError(err, nil)
+		return err
+	}
+	// if the transaction was challanged, it will have 2 distinct items, Paused=true + authorization_url
+	// when it's paused, we will need to add this transaction to the challanged transaction table
+	if chargeAuthResponse.VerifyResponse.Data.Paused {
+		err := app.models.Payments.CreateChallangedTransaction(subscription, chargeAuthResponse.VerifyResponse.Data.Authorization_url, *chargeAuthResponse.VerifyResponse.Data.Message, chargeAuthResponse.VerifyResponse.Data.Reference)
+		if err != nil {
+			app.logger.PrintError(err, nil)
+			return err
+		}
+		// send email to user
+		app.background(func() {
+			data := map[string]any{
+				"UserName":             subscription.User_Name,
+				"TransactionReference": chargeAuthResponse.VerifyResponse.Data.Reference,
+				"PlanName":             subscription.Subscription.Plan_ID,
+				"AmountPaid":           subscription.Subscription.Price,
+				"Currency":             subscription.Currency,
+				"PaymentMethod":        "card",
+				"Date":                 app.formatDate(time.Now().UTC().String()),
+				"TransactionDate":      app.formatDate(chargeAuthResponse.VerifyResponse.Data.TransactionDate),
+				"GrandTotal":           chargeAuthResponse.VerifyResponse.Data.Amount,
+			}
+			err = app.mailer.Send(subscription.User_Email, "challanged_transaction.tmpl", data)
+			if err != nil {
+				app.logger.PrintError(err, nil)
+			}
+		})
+		// report a nil error and proceed
+		return nil
+	}
+	// if the transaction was not successful, we will add it to the failed transaction table
+	if chargeAuthResponse.VerifyResponse.Data.Status != "success" && chargeAuthResponse.VerifyResponse.Data.GatewayResponse != "Approved" {
+		app.logger.PrintInfo("failed transaction", map[string]string{"email": subscription.User_Email, "plan": subscription.Subscription.Status})
+	}
+
+	return nil
 }

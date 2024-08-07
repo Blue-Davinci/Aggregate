@@ -18,6 +18,7 @@ type PaymentOperation int8
 const (
 	PaymentOperationInitialize PaymentOperation = iota
 	PaymentOperationVerify
+	PaymentOperationRecurring
 )
 
 var (
@@ -76,6 +77,8 @@ type Customer struct {
 
 type Data struct {
 	ID                 int64                  `json:"id"`
+	Authorization_url  string                 `json:"authorization_url"` //for challanged cards
+	Paused             bool                   `json:"paused"`            //for challanged cards
 	Domain             string                 `json:"domain"`
 	Status             string                 `json:"status"`
 	Reference          string                 `json:"reference"`
@@ -137,12 +140,13 @@ type InitializeResponse struct {
 }
 
 type TransactionData struct {
-	User_ID     int64  `json:"-"`
-	Plan_ID     int32  `json:"plan_id"`
-	Amount      int64  `json:"amount"`
-	Email       string `json:"email"`
-	CallBackURL string `json:"callback_url"`
-	Reference   string `json:"reference"`
+	User_ID            int64  `json:"-"`
+	Plan_ID            int32  `json:"plan_id"`
+	Amount             int64  `json:"amount"`
+	Email              string `json:"email"`
+	CallBackURL        string `json:"callback_url"`
+	Reference          string `json:"reference"`
+	Authorization_Code string `json:"authorization_code"`
 }
 
 // Payment_Plan struct represents all the info we will
@@ -208,6 +212,15 @@ type Subscription struct {
 	End_Date   time.Time `json:"end_date"`
 	Price      int64     `json:"price"`
 	Status     string    `json:"status"`
+}
+
+type RecurringSubscription struct {
+	Subscription       Subscription `json:"subscription"`
+	Currency           string       `json:"currency"`
+	User_ID            int64        `json:"user_id"`
+	User_Name          string       `json:"user_name"`
+	User_Email         string       `json:"user_email"`
+	Authorization_Code string       `json:"authorization_code"`
 }
 
 // ValidateTransactionData will validate the initialization transaction data provided by the client.
@@ -301,6 +314,28 @@ func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) erro
 	return nil
 }
 
+func (m *PaymentsModel) CreateChallangedTransaction(subscription *RecurringSubscription, url, challanged_error, reference string) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := m.DB.CreateChallangedTransaction(ctx, database.CreateChallangedTransactionParams{
+		UserID:                   subscription.User_ID,
+		ReferencedSubscriptionID: subscription.Subscription.ID,
+		AuthorizationUrl:         url,
+		Reference:                reference,
+		Status:                   "pending",
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *PaymentsModel) CreateFailedTransaction(paymentDetails *Payment_Details) error {
+	return nil
+}
+
 // GetAllSubscriptionsByID() returns the subscription history of a user.
 // It also supports pagination and metadata reporting.
 func (m *PaymentsModel) GetAllSubscriptionsByID(userID int64, filters Filters) ([]*PaymentHistory, Metadata, error) {
@@ -353,6 +388,50 @@ func (m *PaymentsModel) GetAllSubscriptionsByID(userID int64, filters Filters) (
 	// calculate the metadata
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 	return payment_histories, metadata, nil
+}
+
+// GetAllExpiredSubscriptions() returns all the expired subscriptions.
+func (m *PaymentsModel) GetAllExpiredSubscriptions(filters Filters) ([]*RecurringSubscription, Metadata, error) {
+	fmt.Println("Filters: ", filters)
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	rows, err := m.DB.GetAllExpiredSubscriptions(ctx, database.GetAllExpiredSubscriptionsParams{
+		Limit:  int32(filters.limit()),
+		Offset: int32(filters.offset()),
+	})
+	if err != nil {
+		fmt.Println("Error: ", err)
+		return nil, Metadata{}, err
+	}
+	recurring_subscriptions := []*RecurringSubscription{}
+	totalRecords := 0
+	for _, row := range rows {
+		var recurring_subscription RecurringSubscription
+		totalRecords = int(row.TotalRecords)
+		recurring_subscription.User_ID = row.UserID
+		recurring_subscription.User_Name = row.Name
+		recurring_subscription.User_Email = row.Email
+		recurring_subscription.Authorization_Code = row.AuthorizationCode.String
+		recurring_subscription.Currency = row.Currency.String
+		// fill in the subscription details
+		var subscription Subscription
+		subscription.ID = row.SubscriptionID
+		subscription.Plan_ID = row.PlanID
+		priceStr, err := strconv.ParseFloat(row.Price, 64)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+		subscription.Price = int64(priceStr)
+		// Add the subscription to the recurring_subscription
+		recurring_subscription.Subscription = subscription
+		// fill in the subscription details
+		recurring_subscriptions = append(recurring_subscriptions, &recurring_subscription)
+	}
+	fmt.Printf("Email: %s ID:%v User-ID:%v, Plan_ID:%v", "haha", 1, 2, 3)
+	// calculate the metadata
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	return recurring_subscriptions, metadata, nil
 }
 
 // GetPaymentDetailsByID will return an existing plan by its ID.

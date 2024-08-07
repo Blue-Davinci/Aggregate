@@ -55,9 +55,10 @@ type config struct {
 		trustedOrigins []string
 	}
 	paystack struct {
-		secretkey         string
-		initializationurl string
-		verificationurl   string
+		secretkey              string
+		initializationurl      string
+		verificationurl        string
+		chargeauthorizationurl string
 	}
 	frontend struct {
 		baseurl          string
@@ -108,6 +109,7 @@ func main() {
 	flag.StringVar(&cfg.paystack.secretkey, "paystack-secret", os.Getenv("PAYSTACK_SECRET_KEY"), "Paystack Secret Key")
 	flag.StringVar(&cfg.paystack.initializationurl, "paystack-initialization-url", "https://api.paystack.co/transaction/initialize", "Paystack Initialization URL")
 	flag.StringVar(&cfg.paystack.verificationurl, "paystack-verification-url", "https://api.paystack.co/transaction/verify/", "Paystack Verification URL")
+	flag.StringVar(&cfg.paystack.chargeauthorizationurl, "paystack-charge-authorization-url", "https://api.paystack.co/transaction/charge_authorization", "Paystack Charge Authorization URL")
 	// Read the frontend url into the config struct
 	flag.StringVar(&cfg.frontend.baseurl, "frontend-url", "http://localhost:5173", "Frontend URL")
 	flag.StringVar(&cfg.frontend.activationurl, "frontend-activation-url", "http://localhost:5173/verify?token=", "Frontend Activation URL")
@@ -151,6 +153,7 @@ func main() {
 	// hook our notifier
 	go app.fetchNotificationsHandler()
 	// start our server
+	app.autoSubscriptionHandler()
 	err = app.server()
 	if err != nil {
 		logger.PrintFatal(err, nil)

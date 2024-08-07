@@ -55,3 +55,51 @@ ORDER BY
     s.start_date DESC
 LIMIT $2 OFFSET $3;
 
+-- name: GetAllExpiredSubscriptions :many
+SELECT count(*) OVER() as total_records,
+    s.id AS subscription_id,
+    s.authorization_code,
+    s.plan_id,
+    s.price,
+    s.currency,
+    s.user_id,
+    u.email,
+    u.name
+FROM 
+    subscriptions s
+JOIN 
+    users u ON s.user_id = u.id
+WHERE 
+    s.status = 'expired' AND s.end_date < NOW()
+ORDER BY 
+    s.end_date ASC
+LIMIT $1 OFFSET $2;
+
+-- name: CreateChallangedTransaction :one
+INSERT INTO challenged_transactions (
+    user_id,
+    referenced_subscription_id,
+    authorization_url,
+    reference,
+    status
+) VALUES ($1,$2,$3, $4, $5) 
+RETURNING id, created_at;
+
+-- name: CreateFailedTransaction :one
+INSERT INTO failed_transactions (
+    user_id, 
+    subscription_id, 
+    attempt_date, 
+    authorization_code, 
+    reference, 
+    amount, 
+    failure_reason, 
+    error_code, 
+    card_last4, 
+    card_exp_month, 
+    card_exp_year, 
+    card_type, 
+    created_at, 
+    updated_at
+) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+RETURNING id, created_at, updated_at;

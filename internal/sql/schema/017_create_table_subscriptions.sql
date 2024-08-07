@@ -7,7 +7,7 @@ CREATE TABLE subscriptions (
     start_date timestamp(0) with time zone NOT NULL DEFAULT NOW(),
     end_date timestamp(0) with time zone NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('active', 'inactive', 'canceled', 'expired')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('active', 'renewed', 'canceled', 'expired')),
     transaction_id bigserial NOT NULL,
     payment_method VARCHAR(50), 
     authorization_code VARCHAR(50), -- Additional fields

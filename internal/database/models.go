@@ -18,6 +18,17 @@ type ApiKey struct {
 	Scope  string
 }
 
+type ChallengedTransaction struct {
+	ID                       int64
+	UserID                   int64
+	ReferencedSubscriptionID uuid.UUID
+	AuthorizationUrl         string
+	Reference                string
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	Status                   string
+}
+
 type Comment struct {
 	ID              uuid.UUID
 	PostID          uuid.UUID
@@ -35,6 +46,24 @@ type CommentNotification struct {
 	PostID    uuid.UUID
 	UserID    int64
 	CreatedAt time.Time
+}
+
+type FailedTransaction struct {
+	ID                int64
+	UserID            int64
+	SubscriptionID    uuid.UUID
+	AttemptDate       time.Time
+	AuthorizationCode sql.NullString
+	Reference         string
+	Amount            string
+	FailureReason     sql.NullString
+	ErrorCode         sql.NullString
+	CardLast4         sql.NullString
+	CardExpMonth      sql.NullString
+	CardExpYear       sql.NullString
+	CardType          sql.NullString
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type Feed struct {

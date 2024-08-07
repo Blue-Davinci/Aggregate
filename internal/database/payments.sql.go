@@ -14,6 +14,102 @@ import (
 	"github.com/lib/pq"
 )
 
+const createChallangedTransaction = `-- name: CreateChallangedTransaction :one
+INSERT INTO challenged_transactions (
+    user_id,
+    referenced_subscription_id,
+    authorization_url,
+    reference,
+    status
+) VALUES ($1,$2,$3, $4, $5) 
+RETURNING id, created_at
+`
+
+type CreateChallangedTransactionParams struct {
+	UserID                   int64
+	ReferencedSubscriptionID uuid.UUID
+	AuthorizationUrl         string
+	Reference                string
+	Status                   string
+}
+
+type CreateChallangedTransactionRow struct {
+	ID        int64
+	CreatedAt time.Time
+}
+
+func (q *Queries) CreateChallangedTransaction(ctx context.Context, arg CreateChallangedTransactionParams) (CreateChallangedTransactionRow, error) {
+	row := q.db.QueryRowContext(ctx, createChallangedTransaction,
+		arg.UserID,
+		arg.ReferencedSubscriptionID,
+		arg.AuthorizationUrl,
+		arg.Reference,
+		arg.Status,
+	)
+	var i CreateChallangedTransactionRow
+	err := row.Scan(&i.ID, &i.CreatedAt)
+	return i, err
+}
+
+const createFailedTransaction = `-- name: CreateFailedTransaction :one
+INSERT INTO failed_transactions (
+    user_id, 
+    subscription_id, 
+    attempt_date, 
+    authorization_code, 
+    reference, 
+    amount, 
+    failure_reason, 
+    error_code, 
+    card_last4, 
+    card_exp_month, 
+    card_exp_year, 
+    card_type, 
+    created_at, 
+    updated_at
+) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+RETURNING id, created_at, updated_at
+`
+
+type CreateFailedTransactionParams struct {
+	UserID            int64
+	SubscriptionID    uuid.UUID
+	AuthorizationCode sql.NullString
+	Reference         string
+	Amount            string
+	FailureReason     sql.NullString
+	ErrorCode         sql.NullString
+	CardLast4         sql.NullString
+	CardExpMonth      sql.NullString
+	CardExpYear       sql.NullString
+	CardType          sql.NullString
+}
+
+type CreateFailedTransactionRow struct {
+	ID        int64
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) CreateFailedTransaction(ctx context.Context, arg CreateFailedTransactionParams) (CreateFailedTransactionRow, error) {
+	row := q.db.QueryRowContext(ctx, createFailedTransaction,
+		arg.UserID,
+		arg.SubscriptionID,
+		arg.AuthorizationCode,
+		arg.Reference,
+		arg.Amount,
+		arg.FailureReason,
+		arg.ErrorCode,
+		arg.CardLast4,
+		arg.CardExpMonth,
+		arg.CardExpYear,
+		arg.CardType,
+	)
+	var i CreateFailedTransactionRow
+	err := row.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt)
+	return i, err
+}
+
 const createSubscription = `-- name: CreateSubscription :one
 INSERT INTO subscriptions (
 		user_id, plan_id, start_date, end_date, price, status, 
@@ -68,6 +164,77 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 	var i CreateSubscriptionRow
 	err := row.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt)
 	return i, err
+}
+
+const getAllExpiredSubscriptions = `-- name: GetAllExpiredSubscriptions :many
+SELECT count(*) OVER() as total_records,
+    s.id AS subscription_id,
+    s.authorization_code,
+    s.plan_id,
+    s.price,
+    s.currency,
+    s.user_id,
+    u.email,
+    u.name
+FROM 
+    subscriptions s
+JOIN 
+    users u ON s.user_id = u.id
+WHERE 
+    s.status = 'expired' AND s.end_date < NOW()
+ORDER BY 
+    s.end_date ASC
+LIMIT $1 OFFSET $2
+`
+
+type GetAllExpiredSubscriptionsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type GetAllExpiredSubscriptionsRow struct {
+	TotalRecords      int64
+	SubscriptionID    uuid.UUID
+	AuthorizationCode sql.NullString
+	PlanID            int32
+	Price             string
+	Currency          sql.NullString
+	UserID            int64
+	Email             string
+	Name              string
+}
+
+func (q *Queries) GetAllExpiredSubscriptions(ctx context.Context, arg GetAllExpiredSubscriptionsParams) ([]GetAllExpiredSubscriptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllExpiredSubscriptions, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllExpiredSubscriptionsRow
+	for rows.Next() {
+		var i GetAllExpiredSubscriptionsRow
+		if err := rows.Scan(
+			&i.TotalRecords,
+			&i.SubscriptionID,
+			&i.AuthorizationCode,
+			&i.PlanID,
+			&i.Price,
+			&i.Currency,
+			&i.UserID,
+			&i.Email,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getAllSubscriptionsByID = `-- name: GetAllSubscriptionsByID :many
