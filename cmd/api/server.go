@@ -9,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
 func (app *application) server() error {
@@ -43,14 +45,16 @@ func (app *application) server() error {
 		}
 		// Log a message to say that we're waiting for any background goroutines to
 		// complete their tasks.
-		app.logger.PrintInfo("completing background tasks", map[string]string{
+		app.logger.PrintInfo("completing background tasks...", map[string]string{
 			"addr": srv.Addr,
 		})
 		// wait for any background tasks to complete
 		app.wg.Wait()
-		// stop the cron job scheduler
-		ctx = app.config.notifier.cronJob.Stop()
-		<-ctx.Done()
+		// stop the cron job schedulers
+		app.stopCronJobs(
+			app.config.notifier.cronJob,
+			app.config.paystack.cronJob,
+		)
 		// Call Shutdown() on our server, passing in the context we just made.
 		shutdownChan <- srv.Shutdown(ctx)
 	}()
@@ -76,4 +80,14 @@ func (app *application) server() error {
 		"addr": srv.Addr,
 	})
 	return nil
+}
+
+// stopCronJobs() essentially stopns all the cron jobs that are running in the application
+func (app *application) stopCronJobs(cronJobs ...*cron.Cron) {
+	app.logger.PrintInfo("stopping cron jobs...", nil)
+	for _, cronJob := range cronJobs {
+		ctx := cronJob.Stop()
+		<-ctx.Done()
+	}
+
 }

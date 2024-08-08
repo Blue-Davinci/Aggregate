@@ -75,6 +75,39 @@ ORDER BY
     s.end_date ASC
 LIMIT $1 OFFSET $2;
 
+-- name: GetPendingChallengedTransactionsByUser :many
+SELECT 
+    id,
+    user_id,
+    referenced_subscription_id,
+    authorization_url,
+    reference,
+    created_at,
+    updated_at,
+    status
+FROM 
+    challenged_transactions
+WHERE 
+    user_id = $1
+    AND status = 'pending';
+
+-- name: GetPendingChallengedTransactionBySubscriptionID :one
+SELECT 
+    id, 
+    user_id, 
+    referenced_subscription_id, 
+    authorization_url, 
+    reference, 
+    created_at, 
+    updated_at, 
+    status
+FROM 
+    challenged_transactions
+WHERE 
+    referenced_subscription_id = $1
+    AND status = 'pending';
+
+
 -- name: CreateChallangedTransaction :one
 INSERT INTO challenged_transactions (
     user_id,
@@ -98,8 +131,19 @@ INSERT INTO failed_transactions (
     card_last4, 
     card_exp_month, 
     card_exp_year, 
-    card_type, 
-    created_at, 
-    updated_at
-) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+    card_type
+) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, created_at, updated_at;
+
+-- name: UpdateSubscriptionStatusAfterRenewal :one
+UPDATE subscriptions
+SET status = 'renewed'
+WHERE id = $1
+RETURNING updated_at;
+
+-- name: UpdateSubscriptionStatusAfterExpiration :many
+UPDATE subscriptions
+SET status = 'expired'
+WHERE end_date < CURRENT_DATE
+AND status NOT IN ('expired', 'renewed', 'cancelled')
+RETURNING id, user_id, updated_at;

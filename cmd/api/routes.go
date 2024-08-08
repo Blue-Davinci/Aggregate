@@ -150,9 +150,10 @@ func (app *application) apiKeyRoutes() chi.Router {
 // It is responsible for the subscription/paments for users
 func (app *application) subscriptionRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	subscriptionRoutes := chi.NewRouter()
-	subscriptionRoutes.With(dynamicMiddleware.Then).Get("/", app.GetAllSubscriptionsByIDHandler)
+	subscriptionRoutes.With(dynamicMiddleware.Then).Get("/", app.getAllSubscriptionsByIDHandler)
 	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/initialize", app.initializeTransactionHandler)
 	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/verify", app.verifyTransactionHandler)
+	subscriptionRoutes.With(dynamicMiddleware.Then).Get("/challenged", app.getPendingChallengedTransactionsByUser)
 	// plans is free to everyone
 	subscriptionRoutes.Get("/plans", app.getPaymentPlansHandler)
 	return subscriptionRoutes

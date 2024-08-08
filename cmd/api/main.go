@@ -55,10 +55,13 @@ type config struct {
 		trustedOrigins []string
 	}
 	paystack struct {
-		secretkey              string
-		initializationurl      string
-		verificationurl        string
-		chargeauthorizationurl string
+		cronJob                          *cron.Cron
+		secretkey                        string
+		initializationurl                string
+		verificationurl                  string
+		chargeauthorizationurl           string
+		autosubscriptioninterval         int64
+		checkexpiredsubscriptioninterval int64
 	}
 	frontend struct {
 		baseurl          string
@@ -105,16 +108,18 @@ func main() {
 	flag.IntVar(&cfg.scraper.fetchinterval, "scraper-interval", 40, "Interval in seconds before the next bunch of feeds are fetched")
 	flag.IntVar(&cfg.scraper.scraperclient.retrymax, "scraper-retry-max", 3, "Maximum number of retries for HTTP requests")
 	flag.IntVar(&cfg.scraper.scraperclient.timeout, "scraper-timeout", 15, "HTTP client timeout in seconds")
-	// Paystack secret key
+	// Payment
 	flag.StringVar(&cfg.paystack.secretkey, "paystack-secret", os.Getenv("PAYSTACK_SECRET_KEY"), "Paystack Secret Key")
 	flag.StringVar(&cfg.paystack.initializationurl, "paystack-initialization-url", "https://api.paystack.co/transaction/initialize", "Paystack Initialization URL")
 	flag.StringVar(&cfg.paystack.verificationurl, "paystack-verification-url", "https://api.paystack.co/transaction/verify/", "Paystack Verification URL")
 	flag.StringVar(&cfg.paystack.chargeauthorizationurl, "paystack-charge-authorization-url", "https://api.paystack.co/transaction/charge_authorization", "Paystack Charge Authorization URL")
+	flag.Int64Var(&cfg.paystack.autosubscriptioninterval, "paystack-autosubscription-interval", 720, "Interval in minutes for the auto subscription")                             // run auto-subscription checks every 12 hours
+	flag.Int64Var(&cfg.paystack.checkexpiredsubscriptioninterval, "paystack-check-expired-subscription-interval", 1440, "Interval in minutes for the check expired subscription") // run check expired subscription every 24 hours
 	// Read the frontend url into the config struct
 	flag.StringVar(&cfg.frontend.baseurl, "frontend-url", "http://localhost:5173", "Frontend URL")
 	flag.StringVar(&cfg.frontend.activationurl, "frontend-activation-url", "http://localhost:5173/verify?token=", "Frontend Activation URL")
 	flag.StringVar(&cfg.frontend.passwordreseturl, "frontend-password-reset-url", "http://localhost:5173/reset/password?token=", "Frontend Password Reset URL")
-	flag.StringVar(&cfg.frontend.callback_url, "frontend-callback-url", "https://adapted-healthy-monitor.ngrok-free.app/v1/subscriptions/plan", "Frontend Callback URL")
+	flag.StringVar(&cfg.frontend.callback_url, "frontend-callback-url", "https://adapted-healthy-monitor.ngrok-free.app/v1", "Frontend Callback URL")
 	// Limitations
 	flag.IntVar(&cfg.limitations.maxFeedsCreated, "max-feeds-created", 5, "Maximum number of feeds a non-registered user can create")
 	flag.IntVar(&cfg.limitations.maxFeedsFollowed, "max-feeds-followed", 5, "Maximum number of feeds a non-registered user can follow")
@@ -130,7 +135,8 @@ func main() {
 	flag.Int64Var(&cfg.notifier.deleteinterval, "notifier-delete-interval", 100, "Interval in minutes for the notifier to delete old notifications")
 	//parse our flags
 	flag.Parse()
-	// add our cronJob
+	// initialize our cron jobs
+	cfg.paystack.cronJob = cron.New()
 	cfg.notifier.cronJob = cron.New()
 	// create our connection pull
 	db, err := openDB(cfg)
@@ -148,16 +154,21 @@ func main() {
 		models: data.NewModels(db),
 		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
+	// start our background workers
+	app.startBackgroundWorkers()
+	err = app.server()
+	if err != nil {
+		logger.PrintFatal(err, nil)
+	}
+}
+
+func (app *application) startBackgroundWorkers() {
 	// start the scraper function for our RSSFeeds as a goroutine
 	go app.startRssFeedScraperHandler()
 	// hook our notifier
 	go app.fetchNotificationsHandler()
 	// start our server
-	app.autoSubscriptionHandler()
-	err = app.server()
-	if err != nil {
-		logger.PrintFatal(err, nil)
-	}
+	go app.startPaymentSubscriptionHandler()
 }
 
 // publishMetrics sets up the expvar variables for the application

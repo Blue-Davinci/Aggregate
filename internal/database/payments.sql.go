@@ -64,10 +64,8 @@ INSERT INTO failed_transactions (
     card_last4, 
     card_exp_month, 
     card_exp_year, 
-    card_type, 
-    created_at, 
-    updated_at
-) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+    card_type
+) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, created_at, updated_at
 `
 
@@ -407,6 +405,88 @@ func (q *Queries) GetPaymentPlans(ctx context.Context) ([]PaymentPlan, error) {
 	return items, nil
 }
 
+const getPendingChallengedTransactionBySubscriptionID = `-- name: GetPendingChallengedTransactionBySubscriptionID :one
+SELECT 
+    id, 
+    user_id, 
+    referenced_subscription_id, 
+    authorization_url, 
+    reference, 
+    created_at, 
+    updated_at, 
+    status
+FROM 
+    challenged_transactions
+WHERE 
+    referenced_subscription_id = $1
+    AND status = 'pending'
+`
+
+func (q *Queries) GetPendingChallengedTransactionBySubscriptionID(ctx context.Context, referencedSubscriptionID uuid.UUID) (ChallengedTransaction, error) {
+	row := q.db.QueryRowContext(ctx, getPendingChallengedTransactionBySubscriptionID, referencedSubscriptionID)
+	var i ChallengedTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ReferencedSubscriptionID,
+		&i.AuthorizationUrl,
+		&i.Reference,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
+const getPendingChallengedTransactionsByUser = `-- name: GetPendingChallengedTransactionsByUser :many
+SELECT 
+    id,
+    user_id,
+    referenced_subscription_id,
+    authorization_url,
+    reference,
+    created_at,
+    updated_at,
+    status
+FROM 
+    challenged_transactions
+WHERE 
+    user_id = $1
+    AND status = 'pending'
+`
+
+func (q *Queries) GetPendingChallengedTransactionsByUser(ctx context.Context, userID int64) ([]ChallengedTransaction, error) {
+	rows, err := q.db.QueryContext(ctx, getPendingChallengedTransactionsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChallengedTransaction
+	for rows.Next() {
+		var i ChallengedTransaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ReferencedSubscriptionID,
+			&i.AuthorizationUrl,
+			&i.Reference,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSubscriptionByID = `-- name: GetSubscriptionByID :one
 SELECT id, user_id, plan_id, start_date, end_date, price, status
 FROM subscriptions
@@ -436,4 +516,55 @@ func (q *Queries) GetSubscriptionByID(ctx context.Context, userID int64) (GetSub
 		&i.Status,
 	)
 	return i, err
+}
+
+const updateSubscriptionStatusAfterExpiration = `-- name: UpdateSubscriptionStatusAfterExpiration :many
+UPDATE subscriptions
+SET status = 'expired'
+WHERE end_date < CURRENT_DATE
+AND status NOT IN ('expired', 'renewed', 'cancelled')
+RETURNING id, user_id, updated_at
+`
+
+type UpdateSubscriptionStatusAfterExpirationRow struct {
+	ID        uuid.UUID
+	UserID    int64
+	UpdatedAt time.Time
+}
+
+func (q *Queries) UpdateSubscriptionStatusAfterExpiration(ctx context.Context) ([]UpdateSubscriptionStatusAfterExpirationRow, error) {
+	rows, err := q.db.QueryContext(ctx, updateSubscriptionStatusAfterExpiration)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UpdateSubscriptionStatusAfterExpirationRow
+	for rows.Next() {
+		var i UpdateSubscriptionStatusAfterExpirationRow
+		if err := rows.Scan(&i.ID, &i.UserID, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateSubscriptionStatusAfterRenewal = `-- name: UpdateSubscriptionStatusAfterRenewal :one
+UPDATE subscriptions
+SET status = 'renewed'
+WHERE id = $1
+RETURNING updated_at
+`
+
+func (q *Queries) UpdateSubscriptionStatusAfterRenewal(ctx context.Context, id uuid.UUID) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, updateSubscriptionStatusAfterRenewal, id)
+	var updated_at time.Time
+	err := row.Scan(&updated_at)
+	return updated_at, err
 }

@@ -16,6 +16,7 @@ func (app *application) fetchNotificationsHandler() {
 	// set our cron job interval to the interval set by the notifier-interval flag
 	// or the app.config.notifier.interval struct field
 	fetchIntervalString := fmt.Sprintf("*/%d * * * *", app.config.notifier.interval)
+
 	_, err := app.config.notifier.cronJob.AddFunc(fetchIntervalString, app.startNotificationFetch)
 	if err != nil {
 		app.logger.PrintError(err, map[string]string{
@@ -32,6 +33,10 @@ func (app *application) fetchNotificationsHandler() {
 			"Error": "Error adding deleter notifier job",
 		})
 	}
+	// The deleter can wait, but we need to run the startNotificationFetch() first
+	// to proceed with any fetch
+	app.startNotificationFetch()
+
 	// start the cron scheduler
 	app.config.notifier.cronJob.Start()
 }
