@@ -267,6 +267,8 @@ Below are all the end points for the API and a high level description of what th
 
 36. **POST /subscriptions/plans:** Add a subscription plan including details such as features, prices and more.
 
+37. **GET /subscriptions/challenged:** A poll endpoint to check whether a user has a challenged subscription transaction.
+
 <hr />
 
 ## 🔧 Running the tests <a name = "tests"></a>
