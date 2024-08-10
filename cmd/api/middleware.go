@@ -148,11 +148,12 @@ func (app *application) limitations(next http.Handler) http.Handler {
 		app.logger.PrintInfo("Checking user limitations", map[string]string{
 			"User ID": strconv.FormatInt(user.ID, 10),
 		})
-		_, err := app.models.Payments.GetSubscriptionByID(user.ID)
+		// TODO: Get users subscription that is currently active or cancelled but not expired.
+		_, err := app.models.Payments.GetActiveOrNonExpiredSubscriptionByID(user.ID)
 		if err != nil {
 			// if the user does not have a subscription...
 			switch {
-			case errors.Is(err, data.ErrRecordNotFound):
+			case errors.Is(err, data.ErrSubscriptionNotFound):
 				// this means they do not have a subscription and we should check if they have exceeded their limits.
 				limitations, err := app.models.Limitations.GetUserLimitations(user.ID)
 				if err != nil {

@@ -316,6 +316,39 @@ func (m *PaymentsModel) GetSubscriptionByID(userID int64) (*Subscription, error)
 	return &userSub, nil
 }
 
+// GetActiveOrNonExpiredSubscriptionByID() returns a user's active subscription
+// If a user has a ancelled subscription but the subscription is yet to expire
+// this will also be returned.
+func (m *PaymentsModel) GetActiveOrNonExpiredSubscriptionByID(userID int64) (*Subscription, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	subscription, err := m.DB.GetActiveOrNonExpiredSubscriptionByID(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrSubscriptionNotFound
+		default:
+			return nil, err
+		}
+	}
+	var userSub Subscription
+	userSub.ID = subscription.ID
+	userSub.User_ID = subscription.UserID
+	userSub.Plan_ID = subscription.PlanID
+	userSub.Start_Date = subscription.StartDate
+	userSub.End_Date = subscription.EndDate
+	priceStr := subscription.Price
+	price, err := strconv.ParseFloat(priceStr, 64)
+	if err != nil {
+		return nil, err
+	}
+	userSub.Status = subscription.Status
+	userSub.Price = int64(price)
+	// we're good, we return the subscription
+	return &userSub, nil
+}
+
 // CreateSubscription will create a new subscription for a user.
 // This takes in payment details provided from the client and is only activated when
 // the payment is successful. We return an error if the transaction fails.
