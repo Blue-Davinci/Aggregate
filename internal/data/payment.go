@@ -34,6 +34,9 @@ var (
 	PaymentStatusRenewed   = "renewed"
 	PaymentStatusExpired   = "expired"
 	PaymentStatusCancelled = "cancelled"
+	PaymentStatusSuccess   = "successful"
+	PaymentStatusFailed    = "failed"
+	PaymentStatusPending   = "pending"
 )
 
 type PaymentsModel struct {
@@ -261,6 +264,26 @@ func ValidateVerificationData(v *validator.Validator, transactionData *Transacti
 	v.Check(transactionData.Plan_ID != 0, "plan_id", "must be provided")
 }
 
+func ValidateChallengedTransaction(v *validator.Validator, challengedTransaction *ChallengedTransaction) {
+	// Check that the challengedID is provided
+	v.Check(challengedTransaction.ID != 0, "ID", "must be valid or provided")
+	// check status
+	status := challengedTransaction.Status
+	v.Check(status != "", "status", "must be provided")
+	// check provided status is either data.pending or data.failed, data.successful
+	v.Check(status == PaymentStatusPending || status == PaymentStatusFailed || status == PaymentStatusSuccess, "status", "must be a valid status")
+}
+
+func ValidateSubscriptionStatus(v *validator.Validator, subscription *Subscription) {
+	_, isValid := ValidateUUID(subscription.ID.String())
+	v.Check(isValid, "id", "must be a valid UUID")
+	// check status
+	status := subscription.Status
+	v.Check(status != "", "status", "must be provided")
+	// check provided status is either data.pending or data.failed, data.successful
+	v.Check(status == PaymentStatusCancelled, "status", "must be a valid status")
+}
+
 // GetSubscriptionByID will return a user's current subscription if it exists.
 // We take in a user's ID and return a pointer to a Subscription and an error.
 func (m *PaymentsModel) GetSubscriptionByID(userID int64) (*Subscription, error) {
@@ -346,7 +369,7 @@ func (m *PaymentsModel) CreateChallangedTransaction(subscription *RecurringSubsc
 		ReferencedSubscriptionID: subscription.Subscription.ID,
 		AuthorizationUrl:         url,
 		Reference:                reference,
-		Status:                   "pending",
+		Status:                   PaymentStatusPending,
 	})
 	if err != nil {
 		return err
@@ -614,12 +637,16 @@ func (m *PaymentsModel) GetPendingChallengedTransactionBySubscriptionID(Subscrip
 // being "expired" to "renewed".
 // This will help us keep track of finished transactions in the table. Also it will prevent
 // the subscription from being recharged again when the checker job runs.
-func (m *PaymentsModel) UpdateSubscriptionStatusAfterRenewal(subscriptionID uuid.UUID) error {
+func (m *PaymentsModel) UpdateSubscriptionStatus(subscriptionID uuid.UUID, status string, userID int64) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// will ignore the result
-	_, err := m.DB.UpdateSubscriptionStatusAfterRenewal(ctx, subscriptionID)
+	_, err := m.DB.UpdateSubscriptionStatus(ctx, database.UpdateSubscriptionStatusParams{
+		ID:     subscriptionID,
+		Status: status,
+		UserID: userID,
+	})
 	if err != nil {
 		return err
 	}
@@ -647,4 +674,35 @@ func (m *PaymentsModel) UpdateSubscriptionStatusAfterExpiration() ([]*Subscripti
 		subscriptions = append(subscriptions, subscription)
 	}
 	return subscriptions, nil
+}
+
+// UpdateChallengedTransactionStatus will update the status of a challenged transaction based on
+// whether it was successful or not. This function should only be hit when there is a subscription
+// that has been challenged receiving its ID and the status to set.
+func (m *PaymentsModel) UpdateChallengedTransactionStatus(challengedSubscriptionID, user_id int64, status string) (*ChallengedTransaction, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// will ignore the result
+	queryResult, err := m.DB.UpdateChallengedTransactionStatus(ctx, database.UpdateChallengedTransactionStatusParams{
+		ID:     challengedSubscriptionID,
+		Status: status,
+		UserID: user_id,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// get the updated challenged transaction
+	challengedSubscription := &ChallengedTransaction{
+		ID:                       queryResult.ID,
+		User_ID:                  queryResult.UserID,
+		ReferencedSubscriptionID: queryResult.ReferencedSubscriptionID,
+		AuthorizationUrl:         queryResult.AuthorizationUrl,
+		Reference:                queryResult.Reference,
+		Status:                   queryResult.Status,
+		Created_At:               queryResult.CreatedAt,
+		Updated_At:               queryResult.UpdatedAt,
+	}
+
+	return challengedSubscription, nil
 }

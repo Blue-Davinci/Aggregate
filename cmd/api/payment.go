@@ -9,6 +9,7 @@ import (
 
 	"github.com/blue-davinci/aggregate/internal/data"
 	"github.com/blue-davinci/aggregate/internal/validator"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
@@ -70,6 +71,76 @@ func (app *application) getAllSubscriptionsByIDHandler(w http.ResponseWriter, r 
 		return
 	}
 	err = app.writeJSON(w, http.StatusOK, envelope{"subscriptions": subscriptions, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// updateSubscriptionStatusForUserHandler() is a handler that updates the status of a subscription
+// moreso designed to register cancelled subscriptions from a users account. We get the subscription ID
+func (app *application) updateSubscriptionStatusForUserHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		SubscriptionID uuid.UUID `json:"subscription_id"`
+		Status         string    `json:"status"`
+	}
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// make a subscription
+	subscription := &data.Subscription{
+		ID:     input.SubscriptionID,
+		Status: input.Status,
+	}
+	// validate the Subscription ID and the status
+	v := validator.New()
+	if data.ValidateSubscriptionStatus(v, subscription); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// we are okay so let us feed the ID and status
+	err = app.models.Payments.UpdateSubscriptionStatus(subscription.ID, subscription.Status, app.contextGetUser(r).ID)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"subscription": subscription}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// updateChallengedTransactionStatus() updates the status of a challenged transaction
+// designed to set to failed or successful based on the user's resolve
+func (app *application) updateChallengedTransactionStatus(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		ChallengedTransactionID     int64  `json:"challenged_transaction_id"`
+		ChallengedTransactionStatus string `json:"challenged_transaction_status"`
+	}
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	challengedTransaction := &data.ChallengedTransaction{
+		ID:     input.ChallengedTransactionID,
+		Status: input.ChallengedTransactionStatus,
+	}
+	// validate the Comment ID and Comment text
+	v := validator.New()
+	if data.ValidateChallengedTransaction(v, challengedTransaction); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// we are okay so let us feed the ID, status and the user behind the request
+	updatedChallangedTransaction, err := app.models.Payments.UpdateChallengedTransactionStatus(challengedTransaction.ID, app.contextGetUser(r).ID, challengedTransaction.Status)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"challenged_transaction": updatedChallangedTransaction}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -494,7 +565,7 @@ func (app *application) processRecurringSubscription(subscription *data.Recurrin
 
 	// now perform an update on the old subscription setting it to renewed for historical reasons
 	// as we will now have a new subscription for this specific user which we added above.
-	err = app.models.Payments.UpdateSubscriptionStatusAfterRenewal(subscription.Subscription.ID)
+	err = app.models.Payments.UpdateSubscriptionStatus(subscription.Subscription.ID, data.PaymentStatusRenewed, subscription.User_ID)
 	if err != nil {
 		return err
 	}

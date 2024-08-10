@@ -135,10 +135,11 @@ INSERT INTO failed_transactions (
 ) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, created_at, updated_at;
 
--- name: UpdateSubscriptionStatusAfterRenewal :one
+-- name: UpdateSubscriptionStatus :one
 UPDATE subscriptions
-SET status = 'renewed'
-WHERE id = $1
+SET status = $1
+WHERE id = $2
+AND user_id = $3
 RETURNING updated_at;
 
 -- name: UpdateSubscriptionStatusAfterExpiration :many
@@ -147,3 +148,10 @@ SET status = 'expired'
 WHERE end_date < CURRENT_DATE
 AND status NOT IN ('expired', 'renewed', 'cancelled')
 RETURNING id, user_id, updated_at;
+
+-- name: UpdateChallengedTransactionStatus :one
+UPDATE challenged_transactions
+SET status = $1, updated_at = NOW()
+WHERE id = $2
+AND user_id = $3
+RETURNING *;

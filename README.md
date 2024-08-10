@@ -269,6 +269,10 @@ Below are all the end points for the API and a high level description of what th
 
 37. **GET /subscriptions/challenged:** A poll endpoint to check whether a user has a challenged subscription transaction.
 
+38. **PATCH /subscriptions/challenged:** Update challenged transactions. Doing this will only delay a recurring charge
+
+39. **PATCH /subscriptions:** Allows a user to cancel an existing subscription, preventing any further recurring charges.
+
 <hr />
 
 ## 🔧 Running the tests <a name = "tests"></a>

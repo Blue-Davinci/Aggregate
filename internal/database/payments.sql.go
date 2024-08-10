@@ -518,6 +518,57 @@ func (q *Queries) GetSubscriptionByID(ctx context.Context, userID int64) (GetSub
 	return i, err
 }
 
+const updateChallengedTransactionStatus = `-- name: UpdateChallengedTransactionStatus :one
+UPDATE challenged_transactions
+SET status = $1, updated_at = NOW()
+WHERE id = $2
+AND user_id = $3
+RETURNING id, user_id, referenced_subscription_id, authorization_url, reference, created_at, updated_at, status
+`
+
+type UpdateChallengedTransactionStatusParams struct {
+	Status string
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) UpdateChallengedTransactionStatus(ctx context.Context, arg UpdateChallengedTransactionStatusParams) (ChallengedTransaction, error) {
+	row := q.db.QueryRowContext(ctx, updateChallengedTransactionStatus, arg.Status, arg.ID, arg.UserID)
+	var i ChallengedTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ReferencedSubscriptionID,
+		&i.AuthorizationUrl,
+		&i.Reference,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
+const updateSubscriptionStatus = `-- name: UpdateSubscriptionStatus :one
+UPDATE subscriptions
+SET status = $1
+WHERE id = $2
+AND user_id = $3
+RETURNING updated_at
+`
+
+type UpdateSubscriptionStatusParams struct {
+	Status string
+	ID     uuid.UUID
+	UserID int64
+}
+
+func (q *Queries) UpdateSubscriptionStatus(ctx context.Context, arg UpdateSubscriptionStatusParams) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, updateSubscriptionStatus, arg.Status, arg.ID, arg.UserID)
+	var updated_at time.Time
+	err := row.Scan(&updated_at)
+	return updated_at, err
+}
+
 const updateSubscriptionStatusAfterExpiration = `-- name: UpdateSubscriptionStatusAfterExpiration :many
 UPDATE subscriptions
 SET status = 'expired'
@@ -553,18 +604,4 @@ func (q *Queries) UpdateSubscriptionStatusAfterExpiration(ctx context.Context) (
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateSubscriptionStatusAfterRenewal = `-- name: UpdateSubscriptionStatusAfterRenewal :one
-UPDATE subscriptions
-SET status = 'renewed'
-WHERE id = $1
-RETURNING updated_at
-`
-
-func (q *Queries) UpdateSubscriptionStatusAfterRenewal(ctx context.Context, id uuid.UUID) (time.Time, error) {
-	row := q.db.QueryRowContext(ctx, updateSubscriptionStatusAfterRenewal, id)
-	var updated_at time.Time
-	err := row.Scan(&updated_at)
-	return updated_at, err
 }

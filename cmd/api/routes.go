@@ -151,9 +151,12 @@ func (app *application) apiKeyRoutes() chi.Router {
 func (app *application) subscriptionRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	subscriptionRoutes := chi.NewRouter()
 	subscriptionRoutes.With(dynamicMiddleware.Then).Get("/", app.getAllSubscriptionsByIDHandler)
+	subscriptionRoutes.With(dynamicMiddleware.Then).Patch("/", app.updateSubscriptionStatusForUserHandler)
+
 	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/initialize", app.initializeTransactionHandler)
 	subscriptionRoutes.With(dynamicMiddleware.Then).Post("/verify", app.verifyTransactionHandler)
 	subscriptionRoutes.With(dynamicMiddleware.Then).Get("/challenged", app.getPendingChallengedTransactionsByUser)
+	subscriptionRoutes.With(dynamicMiddleware.Then).Patch("/challenged", app.updateChallengedTransactionStatus)
 	// plans is free to everyone
 	subscriptionRoutes.Get("/plans", app.getPaymentPlansHandler)
 	return subscriptionRoutes
