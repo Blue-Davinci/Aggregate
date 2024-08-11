@@ -488,6 +488,39 @@ func (q *Queries) GetPaymentPlans(ctx context.Context) ([]PaymentPlan, error) {
 	return items, nil
 }
 
+const getPendingChallengedTransactionByReference = `-- name: GetPendingChallengedTransactionByReference :one
+SELECT 
+    id, 
+    user_id, 
+    referenced_subscription_id, 
+    authorization_url, 
+    reference, 
+    created_at, 
+    updated_at, 
+    status
+FROM 
+    challenged_transactions
+WHERE 
+    reference = $1
+    AND status = 'pending'
+`
+
+func (q *Queries) GetPendingChallengedTransactionByReference(ctx context.Context, reference string) (ChallengedTransaction, error) {
+	row := q.db.QueryRowContext(ctx, getPendingChallengedTransactionByReference, reference)
+	var i ChallengedTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ReferencedSubscriptionID,
+		&i.AuthorizationUrl,
+		&i.Reference,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
 const getPendingChallengedTransactionBySubscriptionID = `-- name: GetPendingChallengedTransactionBySubscriptionID :one
 SELECT 
     id, 
@@ -631,9 +664,46 @@ func (q *Queries) UpdateChallengedTransactionStatus(ctx context.Context, arg Upd
 	return i, err
 }
 
+const updateExpiredChallengedTransactionStatus = `-- name: UpdateExpiredChallengedTransactionStatus :many
+UPDATE challenged_transactions
+SET status = 'failed', updated_at = NOW()
+WHERE status = 'pending'
+AND created_at < NOW() - INTERVAL '24 hours'
+RETURNING id, user_id, updated_at
+`
+
+type UpdateExpiredChallengedTransactionStatusRow struct {
+	ID        int64
+	UserID    int64
+	UpdatedAt time.Time
+}
+
+func (q *Queries) UpdateExpiredChallengedTransactionStatus(ctx context.Context) ([]UpdateExpiredChallengedTransactionStatusRow, error) {
+	rows, err := q.db.QueryContext(ctx, updateExpiredChallengedTransactionStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UpdateExpiredChallengedTransactionStatusRow
+	for rows.Next() {
+		var i UpdateExpiredChallengedTransactionStatusRow
+		if err := rows.Scan(&i.ID, &i.UserID, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateSubscriptionStatus = `-- name: UpdateSubscriptionStatus :one
 UPDATE subscriptions
-SET status = $1
+SET status = $1, updated_at = NOW()
 WHERE id = $2
 AND user_id = $3
 RETURNING updated_at
@@ -654,7 +724,7 @@ func (q *Queries) UpdateSubscriptionStatus(ctx context.Context, arg UpdateSubscr
 
 const updateSubscriptionStatusAfterExpiration = `-- name: UpdateSubscriptionStatusAfterExpiration :many
 UPDATE subscriptions
-SET status = 'expired'
+SET status = 'expired', updated_at = NOW()
 WHERE end_date < CURRENT_DATE
 AND status NOT IN ('expired', 'renewed', 'cancelled')
 RETURNING id, user_id, updated_at

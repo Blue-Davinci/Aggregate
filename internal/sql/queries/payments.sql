@@ -141,6 +141,22 @@ WHERE
     referenced_subscription_id = $1
     AND status = 'pending';
 
+-- name: GetPendingChallengedTransactionByReference :one
+SELECT 
+    id, 
+    user_id, 
+    referenced_subscription_id, 
+    authorization_url, 
+    reference, 
+    created_at, 
+    updated_at, 
+    status
+FROM 
+    challenged_transactions
+WHERE 
+    reference = $1
+    AND status = 'pending';
+
 
 -- name: CreateChallangedTransaction :one
 INSERT INTO challenged_transactions (
@@ -171,14 +187,14 @@ RETURNING id, created_at, updated_at;
 
 -- name: UpdateSubscriptionStatus :one
 UPDATE subscriptions
-SET status = $1
+SET status = $1, updated_at = NOW()
 WHERE id = $2
 AND user_id = $3
 RETURNING updated_at;
 
 -- name: UpdateSubscriptionStatusAfterExpiration :many
 UPDATE subscriptions
-SET status = 'expired'
+SET status = 'expired', updated_at = NOW()
 WHERE end_date < CURRENT_DATE
 AND status NOT IN ('expired', 'renewed', 'cancelled')
 RETURNING id, user_id, updated_at;
@@ -189,3 +205,10 @@ SET status = $1, updated_at = NOW()
 WHERE id = $2
 AND user_id = $3
 RETURNING *;
+
+-- name: UpdateExpiredChallengedTransactionStatus :many
+UPDATE challenged_transactions
+SET status = 'failed', updated_at = NOW()
+WHERE status = 'pending'
+AND created_at < NOW() - INTERVAL '24 hours'
+RETURNING id, user_id, updated_at;

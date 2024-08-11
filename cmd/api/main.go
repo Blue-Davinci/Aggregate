@@ -55,13 +55,14 @@ type config struct {
 		trustedOrigins []string
 	}
 	paystack struct {
-		cronJob                          *cron.Cron
-		secretkey                        string
-		initializationurl                string
-		verificationurl                  string
-		chargeauthorizationurl           string
-		autosubscriptioninterval         int64
-		checkexpiredsubscriptioninterval int64
+		cronJob                                    *cron.Cron
+		secretkey                                  string
+		initializationurl                          string
+		verificationurl                            string
+		chargeauthorizationurl                     string
+		autosubscriptioninterval                   int64
+		checkexpiredsubscriptioninterval           int64
+		checkexpiredchallengedsubscriptioninterval int64
 	}
 	frontend struct {
 		baseurl          string
@@ -113,8 +114,12 @@ func main() {
 	flag.StringVar(&cfg.paystack.initializationurl, "paystack-initialization-url", "https://api.paystack.co/transaction/initialize", "Paystack Initialization URL")
 	flag.StringVar(&cfg.paystack.verificationurl, "paystack-verification-url", "https://api.paystack.co/transaction/verify/", "Paystack Verification URL")
 	flag.StringVar(&cfg.paystack.chargeauthorizationurl, "paystack-charge-authorization-url", "https://api.paystack.co/transaction/charge_authorization", "Paystack Charge Authorization URL")
-	flag.Int64Var(&cfg.paystack.autosubscriptioninterval, "paystack-autosubscription-interval", 720, "Interval in minutes for the auto subscription")                             // run auto-subscription checks every 12 hours
-	flag.Int64Var(&cfg.paystack.checkexpiredsubscriptioninterval, "paystack-check-expired-subscription-interval", 1440, "Interval in minutes for the check expired subscription") // run check expired subscription every 24 hours
+	flag.Int64Var(&cfg.paystack.autosubscriptioninterval, "paystack-autosubscription-interval",
+		720, "Interval in minutes for the auto subscription") // run auto-subscription checks every 12 hours
+	flag.Int64Var(&cfg.paystack.checkexpiredsubscriptioninterval, "paystack-check-expired-subscription-interval",
+		1440, "Interval in minutes for the check expired subscription") // run check expired subscription every 24 hours
+	flag.Int64Var(&cfg.paystack.checkexpiredchallengedsubscriptioninterval, "paystack-check-expired-challenged-subscription-interval",
+		720, "Interval in minutes for the check expired challenged subscription") // run check expired challenged subscription every 12 hours
 	// Read the frontend url into the config struct
 	flag.StringVar(&cfg.frontend.baseurl, "frontend-url", "http://localhost:5173", "Frontend URL")
 	flag.StringVar(&cfg.frontend.activationurl, "frontend-activation-url", "http://localhost:5173/verify?token=", "Frontend Activation URL")

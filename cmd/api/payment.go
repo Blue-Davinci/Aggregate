@@ -327,6 +327,27 @@ func (app *application) verifyTransactionHandler(w http.ResponseWriter, r *http.
 		}
 		return
 	}
+	// we also check if this reference exists in the challenged transaction table
+	// if it does, we update the status to success
+	challengedTransaction, err := app.models.Payments.GetPendingChallengedTransactionByReference(transactionData.Reference)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrChallangedTransactionNotFound):
+			// we ignore this error, means a user does not have a challenged transaction
+		default:
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+	}
+	// if we got the reference in the challenged transaction table and is also pending, we update the status to success
+	if challengedTransaction != nil {
+		// if we have a challenged transaction, we update the status to successful
+		_, err = app.models.Payments.UpdateChallengedTransactionStatus(challengedTransaction.ID, user.ID, data.PaymentStatusSuccess)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+	}
 	// We send back the transaction and Payment details Data back incase the frontend needs it
 	// maybe for items such as reciept generation etc.
 	err = app.writeJSON(w, http.StatusOK, envelope{"payment_details": payment_detail, "transaction_data": transactionData}, nil)
@@ -416,6 +437,9 @@ func (app *application) startPaymentSubscriptionHandler() {
 	// get our expiry check interval from the flag
 	//app.config.paystack.checkexpiredsubscriptioninterval
 	expiryCheckInterval := fmt.Sprintf("*/%d * * * *", 1)
+	// get our challenged transaction check interval from the flag
+	//app.config.paystack.checkexpiredchallengedsubscriptioninterval
+	expiryChallengedTransactionInterval := fmt.Sprintf("*/%d * * * *", 1)
 
 	// add the autosubscription handler to the cron job
 	_, err := app.config.paystack.cronJob.AddFunc(autoSubscriptionInterval, app.autoSubscriptionHandler)
@@ -430,6 +454,14 @@ func (app *application) startPaymentSubscriptionHandler() {
 	if err != nil {
 		app.logger.PrintError(err, map[string]string{
 			"Error": "Error adding expiry check job",
+		})
+	}
+
+	// add the challenged transaction checker to the cron job
+	_, err = app.config.paystack.cronJob.AddFunc(expiryChallengedTransactionInterval, app.updateExpiredChallengedTransactionStatus)
+	if err != nil {
+		app.logger.PrintError(err, map[string]string{
+			"Error": "Error adding expiry challenged transaction check job",
 		})
 	}
 
@@ -664,5 +696,22 @@ func (app *application) updateExpiredSubscriptionHandler() {
 		app.logger.PrintInfo("Updated expired subscription", map[string]string{"Subscription ID": subscription.ID.String(),
 			"User ID":    fmt.Sprintf("%d", subscription.User_ID),
 			"Updated At": subscription.Updated_At.String()})
+	}
+}
+
+// updateExpiredChallengedTransactionStatus() is a bulk job whose main work is to check all
+// challenged transactions older than 24 hours and update their status to failed.
+// Any challanged tranaction older than 24 hours is considered expired and we will just log
+// each of them out
+func (app *application) updateExpiredChallengedTransactionStatus() {
+	app.logger.PrintInfo("Updating expired challenged transactions", nil)
+	expiredChallengedTransactions, err := app.models.Payments.UpdateExpiredChallengedTransactionStatus()
+	if err != nil {
+		app.logger.PrintError(err, nil)
+	}
+	for _, challengedTransaction := range expiredChallengedTransactions {
+		app.logger.PrintInfo("Updated expired challenged transaction", map[string]string{"Challenged Transaction ID": fmt.Sprintf("%d", challengedTransaction.ID),
+			"User ID":    fmt.Sprintf("%d", challengedTransaction.User_ID),
+			"Updated At": challengedTransaction.Updated_At.String()})
 	}
 }

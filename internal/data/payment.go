@@ -638,11 +638,40 @@ func (m *PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
 // specific to a particulat user subscription.
 // We do this to prevent multiple transactions from being created for the same subscription.
 // especially when or during a recurring subscription charge
-func (m *PaymentsModel) GetPendingChallengedTransactionBySubscriptionID(SubscriptionID uuid.UUID) (*ChallengedTransaction, error) {
+func (m *PaymentsModel) GetPendingChallengedTransactionBySubscriptionID(subscriptionID uuid.UUID) (*ChallengedTransaction, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	queryResult, err := m.DB.GetPendingChallengedTransactionBySubscriptionID(ctx, SubscriptionID)
+	queryResult, err := m.DB.GetPendingChallengedTransactionBySubscriptionID(ctx, subscriptionID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrChallangedTransactionNotFound
+		default:
+			return nil, err
+		}
+	}
+	challengedSubscription := &ChallengedTransaction{
+		ID:                       queryResult.ID,
+		User_ID:                  queryResult.UserID,
+		ReferencedSubscriptionID: queryResult.ReferencedSubscriptionID,
+		AuthorizationUrl:         queryResult.AuthorizationUrl,
+		Reference:                queryResult.Reference,
+		Status:                   queryResult.Status,
+		Created_At:               queryResult.CreatedAt,
+		Updated_At:               queryResult.UpdatedAt,
+	}
+	return challengedSubscription, nil
+}
+
+// GetPendingChallengedTransactionByReference() gets a pending challenged transaction by reference.
+// This endpoint is for checking whether a verification transaction has been initiated for a particular
+// challenged transaction. If it is, we can then update the status of the challenged transaction.
+func (m *PaymentsModel) GetPendingChallengedTransactionByReference(transactionReference string) (*ChallengedTransaction, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	queryResult, err := m.DB.GetPendingChallengedTransactionByReference(ctx, transactionReference)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -738,4 +767,27 @@ func (m *PaymentsModel) UpdateChallengedTransactionStatus(challengedSubscription
 	}
 
 	return challengedSubscription, nil
+}
+
+func (m *PaymentsModel) UpdateExpiredChallengedTransactionStatus() ([]*ChallengedTransaction, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// will ignore the result
+	queryResult, err := m.DB.UpdateExpiredChallengedTransactionStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var challengedSubscriptions []*ChallengedTransaction
+	// get the updated challenged transaction
+	for _, row := range queryResult {
+		challengedSubscription := &ChallengedTransaction{
+			ID:         row.ID,
+			User_ID:    row.UserID,
+			Updated_At: row.UpdatedAt,
+		}
+		challengedSubscriptions = append(challengedSubscriptions, challengedSubscription)
+	}
+
+	return challengedSubscriptions, nil
 }
