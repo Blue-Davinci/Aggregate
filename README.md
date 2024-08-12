@@ -81,6 +81,12 @@ Some of the features include:
 10. **Payment Client Support**: 
     - The API provides custom clients for integration with the payment gateway.
 
+11. **Customization & Flexibility**:
+    - The API provides a myriad of flags that a user can use to adjust and manipulate the API to their own needs. From setting your own rate limits, to how frequently the cron jobs run and happen, to the timeouts to be considered during a scrape job, to how many units to scrape per x time, the API gives you all the power you need to make it yours.
+
+12. **Front-End Support and Flexibility**: 
+    - The API provides provision for users to integrate various links and **EMAIL** templates to their own frontend locations. Whether it's password reset links to Payment redirections to Activation links etc, users can customize and integrate their frontend endpoints with this API.
+
 **In The Works:**
 - **Admin Endpoints :** Endpoints to facilitate admin activities and management
 - **Permissions :** Almost done, permissions depending on the user, including admin, regular and banned users.
