@@ -10,6 +10,8 @@ This document outlines the tasks and features that are planned or need to be imp
                 - ~~Alert and Notifications implimentations.~~
                 - ~~Add Favorites system where users can view all favorited content~~
                 - ~~Comment System~~
-                - Add Manual token request incase signup aut0-sending initially fails.
-                - Add User Account + Settings `endpoints`
-- **Impliment A Payment Gateway:** Add a stripe paywall for no of feeds a user can add, set as hidden, follow?
+                - ~~Add Manual token request incase signup aut0-sending initially fails.~~
+                -~~ Add User Account + Settings `endpoints`~~
+                - Permission Support : almost done
+                - Admin endpoints : in the works
+- ~~**Impliment A Payment Gateway:** Add a stripe paywall for no of feeds a user can add, set as hidden, follow?~~
