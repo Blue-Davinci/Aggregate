@@ -91,3 +91,9 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 	message := "the requested resource could not be found"
 	app.errorResponse(w, r, http.StatusNotFound, message)
 }
+
+// The rateLimitExceededResponse() method will return a 429 too many requests error.
+func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
+	message := "rate limit exceeded"
+	app.errorResponse(w, r, http.StatusTooManyRequests, message)
+}

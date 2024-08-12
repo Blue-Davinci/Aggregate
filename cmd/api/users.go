@@ -26,6 +26,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		Name:      input.Name,
 		Email:     input.Email,
 		Activated: false,
+		User_Img:  data.DefaultImage, // set the default image for the user
 	}
 	// lets set the password for the user by using the Set method from the password struct
 	err = user.Password.Set(input.Password)

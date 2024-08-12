@@ -22,7 +22,7 @@ func (app *application) routes() http.Handler {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 	//Use alice to make a global middleware chain.
-	globalMiddleware := alice.New(app.recoverPanic, app.metrics, app.authenticate).Then
+	globalMiddleware := alice.New(app.metrics, app.recoverPanic, app.rateLimit, app.authenticate).Then
 	// Dynamic Middleware, these will apply to only select routes
 	dynamicMiddleware := alice.New(app.requireAuthenticatedUser, app.requireActivatedUser)
 	// Limitations Middleware, this will apply to specific routes that are capped by the limitations
@@ -138,11 +138,12 @@ func (app *application) statisticRoutes() chi.Router {
 // users who should be: Signup and Activated
 func (app *application) apiKeyRoutes() chi.Router {
 	apiKeyRoutes := chi.NewRouter()
-	apiKeyRoutes.Post("/authentication", app.createAuthenticationApiKeyHandler)
 	// initial request for token
-	apiKeyRoutes.Post("/password-reset", app.createPasswordResetTokenHandler)
+	apiKeyRoutes.Post("/authentication", app.createAuthenticationApiKeyHandler)
 	// /password-reset : for sending keys for resetting passwords
-
+	apiKeyRoutes.Post("/password-reset", app.createPasswordResetTokenHandler)
+	// manual tokken resend
+	apiKeyRoutes.Post("/activation", app.createActivationTokenHandler)
 	return apiKeyRoutes
 }
 

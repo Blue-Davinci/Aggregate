@@ -1,0 +1,142 @@
+{{define "subject"}}Activate Your Aggregate Account!{{end}}
+
+{{define "plainBody"}}
+Hi {{.userName}},
+
+Thank you for joining Aggregate! To get started, please activate your account by using the link below or sending a request to our activation endpoint.
+
+Endpoint Request:
+Send a `PUT /v1/users/activated` request with the following JSON body:
+{"token": "{{.activationToken}}"}
+
+Or, click the link below to activate your account:
+{{.reactivationURL}}
+
+Please note that this is a one-time use token, and it will expire in 3 days.
+
+Thanks,
+The Aggregate Team
+{{end}}
+
+{{define "htmlBody"}}
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      .title {
+        text-align: center;
+        padding: 10px;
+        background-color: #333;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .title img {
+        height: 80px;
+        vertical-align: middle;
+      }
+      .title h2 {
+        display: inline;
+        margin: 0;
+      }
+      hr {
+        border: 0;
+        height: 1px;
+        background: #444;
+        margin: 20px 0;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f0f0f0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 5px;
+        box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+      }
+      .button {
+        display: inline-block;
+        padding: 15px 30px;
+        margin: 20px 0;
+        color: #ffffff;
+        background-color: #007bff;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+      }
+      .button:hover {
+        background-color: #0056b3;
+        box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.2);
+        transform: translateY(-3px);
+      }
+      .button:active {
+        transform: translateY(-1px);
+        box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
+      }
+      a {
+        color: #007bff;
+        text-decoration: none;
+      }
+      .footer {
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        padding: 10px 0;
+        font-size: 0.8rem;
+      }
+      .footer img {
+        height: 24px;
+        width: 24px;
+        margin: 0 10px;
+      }
+      a {
+        display: inline-block;
+        margin-right: -4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="title">
+        <img src="https://i.ibb.co/WKxXnqw/agglogo.png" alt="Aggregate Logo" />
+        <h2>Activate Your Account</h2>
+      </div>
+      <hr />
+      <p>Hi {{.userName}},</p>
+      <p>Thank you for joining Aggregate! Please activate your account by sending a request to the endpoint below or using the activation link.</p>
+      <p>Endpoint Request:</p>
+      <pre><code>
+        PUT /v1/users/activated
+        {"token": "{{.activationToken}}"}
+      </code></pre>
+      <p>Or use the link below to activate your account:</p>
+      <a href="{{.reactivationURL}}" class="button">Activate Account</a>
+      <p>Please note that this is a <strong>one-time</strong> use token and it will expire in <strong>3 days.</strong></p>
+      <p>Thanks,</p>
+      <p>The Aggregate Team</p>
+      <hr />
+      <div class="footer">
+        <p>The Aggregate Project, 6969 Street</p>
+        <p>Powered by <a href="https://golang.org/" target="_blank" style="color: #007bff">Golang</a></p>
+        <a href="https://twitter.com/" target="_blank">
+          <img src="https://img.icons8.com/?size=100&id=rQfEoE6vlrLk&format=png&color=FFFFFF" alt="Twitter" />
+        </a>
+        <a href="https://facebook.com/" target="_blank">
+          <img src="https://img.icons8.com/?size=100&id=8818&format=png&color=FFFFFF" alt="Facebook" />
+        </a>
+      </div>
+    </div>
+  </body>
+</html>
+{{end}}

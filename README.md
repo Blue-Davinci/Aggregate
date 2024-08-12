@@ -14,7 +14,7 @@
 
 </div>
 
----
+<hr />
 
 <p align="center"> Aggregate [Back-End]: This is the full Golang backend code for the <strong>AGGREGATE Project</strong> 🚀🌐
 
@@ -27,6 +27,7 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 ## 📝 Table of Contents
 
 - [About](#about)
+- [Features](#features)
 - [Getting Started](#getting_started)
 - [Deployment](#deployment)
 - [Usage](#usage)
@@ -43,6 +44,48 @@ You are currently in the BackEnd section, To view the FrontEnd go [here](https:/
 ## 🧐 About <a name = "about"></a>
 
 Aggregate is a content aggregation platform designed to streamline information consumption. Its purpose is to centralize feeds from various sources—such as RSS and Atom—into a unified stream. Users can effortlessly follow their favorite content, whether it’s news, blogs, or other updates. The project emphasizes efficiency, security, and a user-friendly experience, making it a valuable tool for staying informed in today’s fast-paced digital landscape. 🚀🌐
+
+## ✨ Features <a name="features"></a>
+
+This will be a high-level list of the features this API supports. For a more detailed and in-depth list of features, you can visit the frontend [here](https://github.com/Blue-Davinci/Aggregate-FronteEnd?tab=readme-ov-file#-usage-and-features-).
+
+Some of the features include:
+
+1. **Panic, Shutdown, and Recovery**: 
+   - The API supports shutdown and panic recoveries, including wait times and graceful shutdown procedures which support background routines and cron jobs.
+
+2. **CORS Management**: 
+   - Support for CORS management, including setting authorized/permitted URLs, methods, and more.
+
+3. **Metrics**: 
+   - The API supports metrics, allowing authorized users to view items such as the number of goroutines, connection pools, performance parameters, and many others.
+
+4. **Mailer Support**: 
+   - The API supports email sending and template development. All you need to do is hook up your `smtp` settings as shown in the `flags` section.
+
+5. **Rate Limiter**: 
+   - The API allows you to set limitations on the rates of user requests, with flags you can set using the listed entries in the `flags` section.
+
+6. **Custom Login and Authentication**: 
+   - The API uses a custom authentication integration, not OAuth or JWT, but rather a hybrid of bearer tokens and an API key for better security.
+
+7. **Filtering, Sorting, and Pagination Support**: 
+   - Most of the routes and handlers allow the usage of filters as well as pagination.
+
+8. **Custom JSON Logger**: 
+   - The API uses a custom structured JSON logger with support for stack traces and customizations depending on the type of info being outputted.
+
+9. **Fully Functional Scraper**: 
+   - The API uses its own scraper designed to acquire all flagged aggregated feeds and has multiple flags such as client timeouts, feed types, scraping rates, retry rates, etc., all designed to be customizable as well as fast.
+
+10. **Payment Client Support**: 
+    - The API provides custom clients for integration with the payment gateway.
+
+**In The Works:**
+- **Admin Endpoints :** Endpoints to facilitate admin activities and management
+- **Permissions :** Almost done, permissions depending on the user, including admin, regular and banned users.
+
+**NB: The above are in no way the full list of features, for that please visit the link provided above.**
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
@@ -139,7 +182,7 @@ The application accepts command-line flags for configuration, establishes a conn
 
 You can view the **parameters** by utilizing the `-help` command. Here is a rundown of 
 the available commands for a quick lookup.
-- **smtp-sender:** Sets the sender for SMTP (email) communications. Default: "Groovy <no-reply@groovy.com>".
+- **smtp-sender:** Sets the sender for SMTP (email) communications. Default: "Aggregate <no-reply@aggregate.com>".
 - **cors-trusted-origins [value]:** Trusted CORS origins (space separated)
 - **db-dsn [string]:** PostgreSQL DSN (default "{Path to your .env holding your DSN}")
 - **db-max-idle-conns [int]:** PostgreSQL max idle connections (default 25)
@@ -150,7 +193,7 @@ the available commands for a quick lookup.
 - **smtp-host [string]:** SMTP host (default "sandbox.smtp.mailtrap.io"- I use mailtrap for tests)
 - **smtp-password [string]:** SMTP password (default "xxxxx")
 - **smtp-port [int]:** SMTP port (default 25)
-- **smtp-sender [string]:** SMTP sender (default "Groovy <no-reply@groovy.com>")
+- **smtp-sender [string]:** SMTP sender (default "Aggregate <no-reply@aggregate.com>")
 - **smtp-username [string]:** SMTP username (default "skunkhunt42")
 - **baseurl [string]:** frontend url (default "http://localhost:5173")
 - **activationurl [string]:** frontend activation url (default "http://localhost:5173/verify?token=")
@@ -158,19 +201,30 @@ the available commands for a quick lookup.
 - **scraper-routines [int]:** Number of scraper routines to run (default 5)- **scraper-interval [int]:** Interval in seconds before the next bunch of feeds are fetched (default 40)
 - **scraper-retry-max [int]:** Maximum number of retries for HTTP requests (default 3)
 - **scraper-timeout [int]:** HTTP client timeout in seconds (default 15)
-- **~~cors-trusted-origins [value]~~:** Trusted CORS origins (space separated)
+- **~~cors-trusted-origins [value]~~:** ~~Trusted CORS origins (space separated)~~
 - **notifier-interval [int64]:** Interval in minutes for the notifier to fetch new notifications (default 10)
 - **notifier-delete-interval [int64]:** Interval in minutes for the notifier to delete old notifications (default 100)
 - **callback_url [string]:** Represents the url which the payment gateway will navigate to after a transaction.
 - **maxFeedsCreated [int64]:** A limitation flag that sets the max number of feeds a free tier user can create
 - **maxFeedsFollowed [int64]:** A limitation flag that sets the max number of feeds a free tier user can follow
 - **maxComments [int64]:** A limitation flag that sets the max number of comments a free tier user can make
+- **limiter-burst [int]:** Rate limiter maximum burst (default 4)
+- **limiter-enabled [bool]:** Enable rate limiter (default true)
+- **limiter-rps [float]:** Rate limiter maximum requests per second (default 2)
+- **paystack-autosubscription-interval [int]:** Interval in minutes for the auto subscription (default 720)
+- **paystack-charge-authorization-url [string]:** The Paystack Charge Authorization URL for processing recurring charges.
+- **paystack-check-expired-challenged-subscription-interval [int]:** Interval in minutes for the check on expired challenged subscription 
+- **paystack-check-expired-subscription-interval [int]:** Interval in minutes for the check on expired subscription.
+- **paystack-initialization-url [string]:** The Paystack Initialization URL for processing the initialization of a payment transaction
+- **paystack-secret [string]:** Paystack Secret Key. This can be configured above, see [payment configuration here](#payment)
+- **paystack-verification-url [string]:** Paystack Verification URL endpoint to process the payment verifications.
 
 Using `make run`, will run the API with a default connection string located 
 in `cmd\api\.env`. If you're using `powershell`, you need to load the values otherwise you will get
 a `cannot load env file` error. Use the PS code below to load it or change the env variable:
+
 ```powershell
-$env:GROOVY_DB_DSN=(Get-Content -Path .\cmd\api\.env | Where-Object { $_ -match "GROOVY_DB_DSN" } | ForEach-Object { $($_.Split("=", 2)[1]) })
+$env:AGGREGATE_DB_DSN=(Get-Content -Path .\cmd\api\.env | Where-Object { $_ -match "AGGREGATE_DB_DSN" } | ForEach-Object { $($_.Split("=", 2)[1]) })
 ```
 
 Alternatively, in unix systems you can make a .envrc file and load it directly in the makefile by importing like so:
@@ -178,7 +232,8 @@ Alternatively, in unix systems you can make a .envrc file and load it directly i
 include .envrc
 ```
 
-A succesful run will output:
+A succesful run will output something like this:
+
 ```bash
 make run/api
 'Running cmd/api...'
@@ -192,7 +247,7 @@ go run ./cmd/api
 <hr />
 
 ### API Endpoints <a name = "endpoints"></a>
-Below are all the end points for the API and a high level description of what they do.
+Below are most of the accepted flags in the API and a high level description of what they do. To view the comprehensive list please run the application with the `-help` flag:
 
 1. **GET /v1/healthcheck:** Checks the health of the application. Returns a 200 OK status code if the application is running correctly.
 
@@ -272,6 +327,8 @@ Below are all the end points for the API and a high level description of what th
 38. **PATCH /subscriptions/challenged:** Update challenged transactions. Doing this will only delay a recurring charge
 
 39. **PATCH /subscriptions:** Allows a user to cancel an existing subscription, preventing any further recurring charges.
+
+40. **POST /api/activation:** Allows a manual request for a new Reset token email for new registered users 
 
 <hr />
 
@@ -377,7 +434,7 @@ This application uses Pay-Stack to handle payments. For the setup, you will need
 
 2. Get the Paystack `API` and add the following to the `.env` file in the `cmd\api` dir as below:
 ```bash
-PAYSTACK_SECRET_KEY=xxxx-paysatck-api-xxxxxxx
+PAYSTACK_SECRET_KEY=xxxx-paystack-api-xxxxxxx
 ```
 3. That is all you need for the setup. The paystack API works on the basis of an initialization and verification which can be done via a `webhook` or `poll`.
 

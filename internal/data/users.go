@@ -21,6 +21,9 @@ var (
 	ErrDuplicateEmail = errors.New("duplicate email")
 )
 
+// Define Default Image:
+const DefaultImage = "https://res.cloudinary.com/djg9a13ka/image/upload/v1723392222/avatars/avatar_1723392218316.png"
+
 // Declare a new AnonymousUser variable.
 var AnonymousUser = &User{}
 
