@@ -23,6 +23,8 @@ type Models struct {
 	Comments      CommentsModel
 	Payments      PaymentsModel
 	Limitations   LimitationsModel
+	Permissions   PermissionModel
+	Admin         AdminModel
 	//feed models
 }
 
@@ -38,5 +40,7 @@ func NewModels(db *database.Queries) Models {
 		Comments:      CommentsModel{DB: db},
 		Payments:      PaymentsModel{DB: db},
 		Limitations:   LimitationsModel{DB: db},
+		Permissions:   PermissionModel{DB: db},
+		Admin:         AdminModel{DB: db},
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"expvar"
 	"flag"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -14,13 +15,16 @@ import (
 	"github.com/blue-davinci/aggregate/internal/database"
 	"github.com/blue-davinci/aggregate/internal/jsonlog"
 	"github.com/blue-davinci/aggregate/internal/mailer"
+	"github.com/blue-davinci/aggregate/internal/vcs"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/robfig/cron/v3"
 )
 
 // a quick variable to hold our version. ToDo: Change this.
-const version = "1.0.0"
+var (
+	version = vcs.Version()
+)
 
 type config struct {
 	port int
@@ -147,11 +151,19 @@ func main() {
 	flag.Int64Var(&cfg.notifier.interval, "notifier-interval", 10, "Interval in minutes for the notifier to fetch new notifications")
 	// delete interval for the notifier
 	flag.Int64Var(&cfg.notifier.deleteinterval, "notifier-delete-interval", 100, "Interval in minutes for the notifier to delete old notifications")
+	// Create a new version boolean flag with the default value of false.
+	displayVersion := flag.Bool("version", false, "Display version and exit")
 	//parse our flags
 	flag.Parse()
 	// initialize our cron jobs
 	cfg.paystack.cronJob = cron.New()
 	cfg.notifier.cronJob = cron.New()
+	// If the version flag value is true, then print out the version number and
+	// immediately exit.
+	if *displayVersion {
+		fmt.Printf("Version:\t%s\n", version)
+		os.Exit(0)
+	}
 	// create our connection pull
 	db, err := openDB(cfg)
 	if err != nil {

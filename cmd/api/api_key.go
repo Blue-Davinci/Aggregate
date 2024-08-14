@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -59,10 +60,22 @@ func (app *application) createAuthenticationApiKeyHandler(w http.ResponseWriter,
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	// we also get the roles for the user
+	permissions, err := app.models.Permissions.GetAllPermissionsForUser(user.ID)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	userRole := "user"
+	if permissions.Include(data.PermissionAdminRead) {
+		userRole = "admin"
+	}
+	app.logger.PrintInfo(fmt.Sprintf("Permissions: %v", permissions), nil)
 	// Encode the apikey to json and send it to the user with a 201 Created status code
 	err = app.writeJSON(w, http.StatusCreated, envelope{
 		"api_key": api_key,
 		"user":    user,
+		"role":    userRole,
 	}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

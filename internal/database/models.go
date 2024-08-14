@@ -110,6 +110,11 @@ type PaymentPlan struct {
 	Status      string
 }
 
+type Permission struct {
+	ID   int64
+	Code string
+}
+
 type Postfavorite struct {
 	ID        int64
 	PostID    uuid.UUID
@@ -163,4 +168,9 @@ type User struct {
 	Activated    bool
 	Version      int32
 	UserImg      string
+}
+
+type UsersPermission struct {
+	UserID       int64
+	PermissionID int64
 }

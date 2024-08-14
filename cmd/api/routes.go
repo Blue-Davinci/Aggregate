@@ -25,6 +25,8 @@ func (app *application) routes() http.Handler {
 	globalMiddleware := alice.New(app.metrics, app.recoverPanic, app.rateLimit, app.authenticate).Then
 	// Dynamic Middleware, these will apply to only select routes
 	dynamicMiddleware := alice.New(app.requireAuthenticatedUser, app.requireActivatedUser)
+	// Permission Middleware, this will apply to specific routes that are capped by the permissions
+	adminPermissionMiddleware := alice.New(app.requirePermission("admin:read"))
 	// Limitations Middleware, this will apply to specific routes that are capped by the limitations
 	// and will sit behind the dynamic middleware.
 	limitationsMiddleware := alice.New(app.limitations)
@@ -34,6 +36,8 @@ func (app *application) routes() http.Handler {
 	v1Router := chi.NewRouter()
 	// Mounts general routes "home"
 	v1Router.With(dynamicMiddleware.Then).Mount("/", app.generalRoutes())
+	// Mounts admin routes
+	v1Router.With(dynamicMiddleware.Then, adminPermissionMiddleware.Then).Mount("/admin", app.adminRoutes())
 	// The top routes will also need to be seperated when we add more, currently
 	// top feeds is there and will be available to anyone.
 	v1Router.Mount("/top", app.statisticRoutes())
@@ -161,4 +165,18 @@ func (app *application) subscriptionRoutes(dynamicMiddleware *alice.Chain) chi.R
 	// plans is free to everyone
 	subscriptionRoutes.Get("/plans", app.getPaymentPlansHandler)
 	return subscriptionRoutes
+}
+
+// adminRoutes() provides a router for the /admin API endpoint.
+// It is responsible for the API's general administration
+func (app *application) adminRoutes() chi.Router {
+	adminRoutes := chi.NewRouter()
+	// users
+	adminRoutes.Get("/users", app.adminGetAllUsersHandler)
+	// permissions
+	adminRoutes.Post("/permissions", app.addPermissionsForUserHandler)
+	adminRoutes.Delete("/permissions/{pCode}/{userID}", app.deletePermissionsForUserHandler)
+	// statistics
+	adminRoutes.Get("/statistics", app.adminGetStatisticsHandler)
+	return adminRoutes
 }

@@ -35,6 +35,16 @@ func (app *application) covertToByteArray(data interface{}) ([]byte, error) {
 	return js, nil
 }
 
+func (app *application) returnEnvInfo() envelope {
+	return envelope{
+		"status": "available",
+		"system_info": map[string]string{
+			"environment": app.config.env,
+			"version":     version,
+		},
+	}
+}
+
 // writeJSON() helper for sending responses. This takes the destination
 // http.ResponseWriter, the HTTP status code to send, the data to encode to JSON, and a
 // header map containing any additional HTTP headers we want to include in the response.
@@ -210,14 +220,14 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 
 // Retrieve the "id" URL parameter from the current request context, then convert it to
 // an integer and return it. If the operation isn't successful, return 0 and an error.
-func (app *application) readIDIntParam(r *http.Request) (int64, error) {
+func (app *application) readIDIntParam(r *http.Request, parameterName string) (int64, error) {
 	// We can then use the ByName() method to get the value of the "id" parameter from
 	// the slice. So we try to convert it to a base 10 integer (with a bit size of 64).
 	// If the parameter couldn't be converted, or is less than 1, we know the ID is invalid
-	params := chi.URLParam(r, "id")
+	params := chi.URLParam(r, parameterName)
 	id, err := strconv.ParseInt(params, 10, 64)
 	if err != nil || id < 1 {
-		return 0, errors.New("invalid id parameter")
+		return 0, errors.New("invalid i-id parameter")
 	}
 	return id, nil
 }
@@ -230,9 +240,27 @@ func (app *application) readIDParam(r *http.Request, parameterName string) (uuid
 	params := chi.URLParam(r, parameterName)
 	feedID, isvalid := data.ValidateUUID(params)
 	if !isvalid {
-		return uuid.Nil, errors.New("invalid id parameter")
+		return uuid.Nil, errors.New("invalid u-id parameter")
 	}
 	return feedID, nil
+}
+
+func (app *application) readIDStrParam(r *http.Request, parameterName string) (string, error) {
+	params := chi.URLParam(r, parameterName)
+	app.logger.PrintInfo(fmt.Sprintf("Raw Param: %s", params), nil)
+
+	// URL-decode the parameter value
+	decodedParam, err := url.QueryUnescape(params)
+	if err != nil {
+		app.logger.PrintInfo("Decoding failed", nil)
+		return "", errors.New("invalid st-id-de parameter")
+	}
+	app.logger.PrintInfo(fmt.Sprintf("Decoded Param: %s", decodedParam), nil)
+
+	if decodedParam == "" {
+		return "", errors.New("invalid st-id parameter")
+	}
+	return decodedParam, nil
 }
 
 func (app *application) readIDFromQuery(r *http.Request, parameterName string) (uuid.UUID, error) {
