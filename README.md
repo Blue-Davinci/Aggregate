@@ -51,45 +51,68 @@ This will be a high-level list of the features this API supports. For a more det
 
 Some of the features include:
 
-1. **Panic, Shutdown, and Recovery**: 
+1. **Administration\Admin endpoints:**
+   - Provides Endpoints to facilitate admin activities and management. Allows only users with Admin permissions to perform operations such as:
+        - User management: view all users and their activities
+            - Give\promote users by adding necessary permissions to them
+            - Remove\demote users by removing their perissions
+            - Delete users from the system completely
+            - Ban users, preventing them from doing specified operations such as adding comments etc
+        - View System Information:
+            - Admins can view system information including debug variables
+            - Admins can perform healtchecks on the system and also acqiore versioning info.
+        - Subscription Management
+            - Admins can add\hide and update existing plans
+            - Admins can view subscription information from users
+            - View revenue information, total sales, most used plans, mode of payments, latest subs etc
+    **More capabilities are in the pipeline including feed and post management as well as Moderation**
+
+2. **Permissions:**
+   - Admins can set and manage types of permissions as well as individual permissions.
+   - With the above capability, permissions become highly customizeable in that  you can further specify which routes require which permissions for example,
+     you may have `{comment:write}` and `{comment:read}`, if a moderator bans a user, their `commen:write` permission maybe removed, and thus the users
+     replies and comments will not be reflected.
+   - The API comes with the following default permissions: `{admin:read}, {moderator:read}, {moderator:write} and {admin:write}`. You can specify which route
+     Requires which permission directly by including the particular permission in tha route.
+
+3. **Panic, Shutdown, and Recovery**: 
    - The API supports shutdown and panic recoveries, including wait times and graceful shutdown procedures which support background routines and cron jobs.
 
-2. **CORS Management**: 
+4. **CORS Management**: 
    - Support for CORS management, including setting authorized/permitted URLs, methods, and more.
 
-3. **Metrics**: 
+5. **Metrics**: 
    - The API supports metrics, allowing authorized users to view items such as the number of goroutines, connection pools, performance parameters, and many others.
 
-4. **Mailer Support**: 
+6. **Mailer Support**: 
    - The API supports email sending and template development. All you need to do is hook up your `smtp` settings as shown in the `flags` section.
 
-5. **Rate Limiter**: 
+7. **Rate Limiter**: 
    - The API allows you to set limitations on the rates of user requests, with flags you can set using the listed entries in the `flags` section.
 
-6. **Custom Login and Authentication**: 
+8. **Custom Login and Authentication**: 
    - The API uses a custom authentication integration, not OAuth or JWT, but rather a hybrid of bearer tokens and an API key for better security.
 
-7. **Filtering, Sorting, and Pagination Support**: 
+9. **Filtering, Sorting, and Pagination Support**: 
    - Most of the routes and handlers allow the usage of filters as well as pagination.
 
-8. **Custom JSON Logger**: 
+10. **Custom JSON Logger**: 
    - The API uses a custom structured JSON logger with support for stack traces and customizations depending on the type of info being outputted.
 
-9. **Fully Functional Scraper**: 
+11. **Fully Functional Scraper**: 
    - The API uses its own scraper designed to acquire all flagged aggregated feeds and has multiple flags such as client timeouts, feed types, scraping rates, retry rates, etc., all designed to be customizable as well as fast.
 
-10. **Payment Client Support**: 
+12. **Payment Client Support**: 
     - The API provides custom clients for integration with the payment gateway.
 
-11. **Customization & Flexibility**:
+13. **Customization & Flexibility**:
     - The API provides a myriad of flags that a user can use to adjust and manipulate the API to their own needs. From setting your own rate limits, to how frequently the cron jobs run and happen, to the timeouts to be considered during a scrape job, to how many units to scrape per x time, the API gives you all the power you need to make it yours.
 
-12. **Front-End Support and Flexibility**: 
+14. **Front-End Support and Flexibility**: 
     - The API provides provision for users to integrate various links and **EMAIL** templates to their own frontend locations. Whether it's password reset links to Payment redirections to Activation links etc, users can customize and integrate their frontend endpoints with this API.
 
 **In The Works:**
-- **Admin Endpoints :** Endpoints to facilitate admin activities and management
-- **Permissions :** Almost done, permissions depending on the user, including admin, regular and banned users.
+- **Admin Endpoints :** New Endpoints for management including content managers
 
 **NB: The above are in no way the full list of features, for that please visit the link provided above.**
 
