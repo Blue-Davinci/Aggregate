@@ -54,26 +54,13 @@ Some of the features include:
 1. **Administration\Admin endpoints:**
    - Provides Endpoints to facilitate admin activities and management. Allows only users with Admin permissions to perform operations such as:
         - User management: view all users and their activities
-            - Give\promote users by adding necessary permissions to them
-            - Remove\demote users by removing their perissions
-            - Delete users from the system completely
-            - Ban users, preventing them from doing specified operations such as adding comments etc
-        - View System Information:
-            - Admins can view system information including debug variables
-            - Admins can perform healtchecks on the system and also acqiore versioning info.
-        - Subscription Management
-            - Admins can add\hide and update existing plans
-            - Admins can view subscription information from users
-            - View revenue information, total sales, most used plans, mode of payments, latest subs etc
+        - Subscription Management: add\hide\update plans, subscriptions and subscribed users.
     **More capabilities are in the pipeline including feed and post management as well as Moderation**
-
 2. **Permissions:**
    - Admins can set and manage types of permissions as well as individual permissions.
    - With the above capability, permissions become highly customizeable in that  you can further specify which routes require which permissions for example,
      you may have `{comment:write}` and `{comment:read}`, if a moderator bans a user, their `commen:write` permission maybe removed, and thus the users
      replies and comments will not be reflected.
-   - The API comes with the following default permissions: `{admin:read}, {moderator:read}, {moderator:write} and {admin:write}`. You can specify which route
-     Requires which permission directly by including the particular permission in tha route.
 
 3. **Panic, Shutdown, and Recovery**: 
    - The API supports shutdown and panic recoveries, including wait times and graceful shutdown procedures which support background routines and cron jobs.
