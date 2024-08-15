@@ -7,8 +7,201 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
+
+const adminCreatePaymentPlan = `-- name: AdminCreatePaymentPlan :one
+INSERT INTO payment_plans (
+    name, image, description, duration, price, features, status
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+RETURNING id, name, image, description, duration, price, features, created_at, updated_at, status, version
+`
+
+type AdminCreatePaymentPlanParams struct {
+	Name        string
+	Image       string
+	Description sql.NullString
+	Duration    string
+	Price       string
+	Features    []string
+	Status      string
+}
+
+func (q *Queries) AdminCreatePaymentPlan(ctx context.Context, arg AdminCreatePaymentPlanParams) (PaymentPlan, error) {
+	row := q.db.QueryRowContext(ctx, adminCreatePaymentPlan,
+		arg.Name,
+		arg.Image,
+		arg.Description,
+		arg.Duration,
+		arg.Price,
+		pq.Array(arg.Features),
+		arg.Status,
+	)
+	var i PaymentPlan
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Image,
+		&i.Description,
+		&i.Duration,
+		&i.Price,
+		pq.Array(&i.Features),
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+		&i.Version,
+	)
+	return i, err
+}
+
+const adminGetAllPaymentPlans = `-- name: AdminGetAllPaymentPlans :many
+SELECT id, name, image, description, duration, price, features, created_at, updated_at, status,version
+FROM payment_plans
+`
+
+func (q *Queries) AdminGetAllPaymentPlans(ctx context.Context) ([]PaymentPlan, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetAllPaymentPlans)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentPlan
+	for rows.Next() {
+		var i PaymentPlan
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Image,
+			&i.Description,
+			&i.Duration,
+			&i.Price,
+			pq.Array(&i.Features),
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Status,
+			&i.Version,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminGetAllSubscriptions = `-- name: AdminGetAllSubscriptions :many
+SELECT 
+    count(*) OVER() as total_records,
+    s.id, 
+    s.user_id, 
+    s.plan_id, 
+    p.name as plan_name,
+    p.image as plan_image,
+    p.duration as plan_duration,
+    s.start_date, 
+    s.end_date, 
+    s.price, 
+    s.status, 
+    s.transaction_id, 
+    s.payment_method, 
+    s.card_last4, 
+    s.card_exp_month, 
+    s.card_exp_year, 
+    s.card_type, 
+    s.currency, 
+    s.created_at, 
+    s.updated_at
+FROM 
+    subscriptions s
+JOIN 
+    payment_plans p ON s.plan_id = p.id
+ORDER BY 
+    s.start_date DESC
+LIMIT $1 OFFSET $2
+`
+
+type AdminGetAllSubscriptionsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type AdminGetAllSubscriptionsRow struct {
+	TotalRecords  int64
+	ID            uuid.UUID
+	UserID        int64
+	PlanID        int32
+	PlanName      string
+	PlanImage     string
+	PlanDuration  string
+	StartDate     time.Time
+	EndDate       time.Time
+	Price         string
+	Status        string
+	TransactionID int64
+	PaymentMethod sql.NullString
+	CardLast4     sql.NullString
+	CardExpMonth  sql.NullString
+	CardExpYear   sql.NullString
+	CardType      sql.NullString
+	Currency      sql.NullString
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) AdminGetAllSubscriptions(ctx context.Context, arg AdminGetAllSubscriptionsParams) ([]AdminGetAllSubscriptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetAllSubscriptions, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetAllSubscriptionsRow
+	for rows.Next() {
+		var i AdminGetAllSubscriptionsRow
+		if err := rows.Scan(
+			&i.TotalRecords,
+			&i.ID,
+			&i.UserID,
+			&i.PlanID,
+			&i.PlanName,
+			&i.PlanImage,
+			&i.PlanDuration,
+			&i.StartDate,
+			&i.EndDate,
+			&i.Price,
+			&i.Status,
+			&i.TransactionID,
+			&i.PaymentMethod,
+			&i.CardLast4,
+			&i.CardExpMonth,
+			&i.CardExpYear,
+			&i.CardType,
+			&i.Currency,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const adminGetAllUsers = `-- name: AdminGetAllUsers :many
 SELECT
@@ -93,6 +286,31 @@ func (q *Queries) AdminGetAllUsers(ctx context.Context, arg AdminGetAllUsersPara
 	return items, nil
 }
 
+const adminGetPaymentPlanByID = `-- name: AdminGetPaymentPlanByID :one
+SELECT id, name, image, description, duration, price, features, created_at, updated_at, status, version
+FROM payment_plans
+WHERE id = $1
+`
+
+func (q *Queries) AdminGetPaymentPlanByID(ctx context.Context, id int32) (PaymentPlan, error) {
+	row := q.db.QueryRowContext(ctx, adminGetPaymentPlanByID, id)
+	var i PaymentPlan
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Image,
+		&i.Description,
+		&i.Duration,
+		&i.Price,
+		pq.Array(&i.Features),
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+		&i.Version,
+	)
+	return i, err
+}
+
 const adminGetStatistics = `-- name: AdminGetStatistics :one
 WITH
 user_stats AS (
@@ -170,4 +388,50 @@ func (q *Queries) AdminGetStatistics(ctx context.Context) (AdminGetStatisticsRow
 		&i.RecentComments,
 	)
 	return i, err
+}
+
+const adminUpdatePaymentPlan = `-- name: AdminUpdatePaymentPlan :one
+UPDATE payment_plans
+SET 
+    name = $1,
+    image = $2,
+    description = $3,
+    duration = $4,
+    price = $5,
+    features = $6,
+    status = $7,
+    version = version + 1,
+    updated_at = now()
+WHERE 
+    id = $8 AND version = $9
+RETURNING version
+`
+
+type AdminUpdatePaymentPlanParams struct {
+	Name        string
+	Image       string
+	Description sql.NullString
+	Duration    string
+	Price       string
+	Features    []string
+	Status      string
+	ID          int32
+	Version     int32
+}
+
+func (q *Queries) AdminUpdatePaymentPlan(ctx context.Context, arg AdminUpdatePaymentPlanParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, adminUpdatePaymentPlan,
+		arg.Name,
+		arg.Image,
+		arg.Description,
+		arg.Duration,
+		arg.Price,
+		pq.Array(arg.Features),
+		arg.Status,
+		arg.ID,
+		arg.Version,
+	)
+	var version int32
+	err := row.Scan(&version)
+	return version, err
 }

@@ -108,6 +108,7 @@ type PaymentPlan struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Status      string
+	Version     int32
 }
 
 type Permission struct {

@@ -430,9 +430,22 @@ FROM payment_plans
 WHERE id = $1 AND status = 'active'
 `
 
-func (q *Queries) GetPaymentPlanByID(ctx context.Context, id int32) (PaymentPlan, error) {
+type GetPaymentPlanByIDRow struct {
+	ID          int32
+	Name        string
+	Image       string
+	Description sql.NullString
+	Duration    string
+	Price       string
+	Features    []string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Status      string
+}
+
+func (q *Queries) GetPaymentPlanByID(ctx context.Context, id int32) (GetPaymentPlanByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getPaymentPlanByID, id)
-	var i PaymentPlan
+	var i GetPaymentPlanByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -454,15 +467,28 @@ FROM payment_plans
 WHERE status = 'active'
 `
 
-func (q *Queries) GetPaymentPlans(ctx context.Context) ([]PaymentPlan, error) {
+type GetPaymentPlansRow struct {
+	ID          int32
+	Name        string
+	Image       string
+	Description sql.NullString
+	Duration    string
+	Price       string
+	Features    []string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Status      string
+}
+
+func (q *Queries) GetPaymentPlans(ctx context.Context) ([]GetPaymentPlansRow, error) {
 	rows, err := q.db.QueryContext(ctx, getPaymentPlans)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PaymentPlan
+	var items []GetPaymentPlansRow
 	for rows.Next() {
-		var i PaymentPlan
+		var i GetPaymentPlansRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,

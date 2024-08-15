@@ -175,6 +175,7 @@ type Payment_Plan struct {
 	Created_At  time.Time `json:"created_at"`
 	Updated_At  time.Time `json:"updated_at"`
 	Status      string    `json:"status"`
+	Version     int32     `json:"version"`
 }
 
 // Payment_Confirmation
@@ -282,6 +283,18 @@ func ValidateSubscriptionStatus(v *validator.Validator, subscription *Subscripti
 	v.Check(status != "", "status", "must be provided")
 	// check provided status is either data.pending or data.failed, data.successful
 	v.Check(status == PaymentStatusCancelled, "status", "must be a valid status")
+}
+
+func ValidatePaymentPlan(v *validator.Validator, paymentPlan *Payment_Plan) {
+	v.Check(paymentPlan.Name != "", "name", "must be provided")
+	v.Check(len(paymentPlan.Name) <= 100, "name", "must not be more than 100 characters")
+	v.Check(paymentPlan.Description != "", "description", "must be provided")
+	v.Check(len(paymentPlan.Description) <= 500, "description", "must not be more than 500 characters")
+	v.Check(paymentPlan.Duration != "", "duration", "must be provided")
+	v.Check(paymentPlan.Price != 0, "price", "must be provided")
+	v.Check(len(paymentPlan.Features) != 0, "features", "must be provided")
+	v.Check(paymentPlan.Status != "", "status", "must be provided")
+	v.Check(paymentPlan.Status == "active" || paymentPlan.Status == "inactive", "status", "must be either 'active' or 'inactive'")
 }
 
 // GetSubscriptionByID will return a user's current subscription if it exists.

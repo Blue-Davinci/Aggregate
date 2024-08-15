@@ -178,5 +178,11 @@ func (app *application) adminRoutes() chi.Router {
 	adminRoutes.Delete("/permissions/{pCode}/{userID}", app.deletePermissionsForUserHandler)
 	// statistics
 	adminRoutes.Get("/statistics", app.adminGetStatisticsHandler)
+	// payment plans
+	adminRoutes.Get("/payment-plans", app.adminGetPaymentPlansHandler)
+	adminRoutes.Post("/payment-plans", app.adminCreatePaymentPlansHandler)
+	adminRoutes.Patch("/payment-plans/{planID}", app.adminUpdatePaymentPlanHandler)
+	// subscriptions
+	adminRoutes.Get("/subscriptions", app.adminGetAllSubscriptionsHandler)
 	return adminRoutes
 }
