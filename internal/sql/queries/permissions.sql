@@ -1,3 +1,22 @@
+-- name: GetAllSuperUsersWithPermissions :many
+SELECT 
+    u.id AS user_id,
+    u.name,
+    u.user_img,
+    p.id AS permission_id,
+    p.code AS permission_code
+FROM 
+    users u
+JOIN 
+    users_permissions up ON u.id = up.user_id
+JOIN 
+    permissions p ON up.permission_id = p.id;
+
+
+-- name: GetAllPermissions :many
+SELECT id, code
+FROM permissions;
+
 -- name: GetAllPermissionsForUser :many
 SELECT permissions.code
 FROM permissions

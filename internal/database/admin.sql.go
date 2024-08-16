@@ -14,6 +14,19 @@ import (
 	"github.com/lib/pq"
 )
 
+const adminCreateNewPermission = `-- name: AdminCreateNewPermission :one
+INSERT INTO permissions (code)
+VALUES ($1)
+RETURNING id, code
+`
+
+func (q *Queries) AdminCreateNewPermission(ctx context.Context, code string) (Permission, error) {
+	row := q.db.QueryRowContext(ctx, adminCreateNewPermission, code)
+	var i Permission
+	err := row.Scan(&i.ID, &i.Code)
+	return i, err
+}
+
 const adminCreatePaymentPlan = `-- name: AdminCreatePaymentPlan :one
 INSERT INTO payment_plans (
     name, image, description, duration, price, features, status

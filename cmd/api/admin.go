@@ -69,7 +69,7 @@ func (app *application) adminGetStatisticsHandler(w http.ResponseWriter, r *http
 // adminGetPaymentPlansHandler() is the endpoint handler responsible for returning all the
 // available payment plans regardless of their status, i.e active or inactive
 func (app *application) adminGetPaymentPlansHandler(w http.ResponseWriter, r *http.Request) {
-	plans, err := app.models.Payments.AdminGetPaymentPlans()
+	plans, err := app.models.Admin.AdminGetPaymentPlans()
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -102,12 +102,77 @@ func (app *application) adminGetAllSubscriptionsHandler(w http.ResponseWriter, r
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	subscriptions, metadata, err := app.models.Payments.AdminGetAllSubscriptions(input.Filters)
+	subscriptions, metadata, err := app.models.Admin.AdminGetAllSubscriptions(input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	err = app.writeJSON(w, http.StatusOK, envelope{"subscriptions": subscriptions, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// adminGetAllPermissionsHandler() is an admin endpoint that returns all the available
+// permissions in the system. This is useful for the admin to see what permissions are
+// available to assign to users.
+func (app *application) adminGetAllPermissionsHandler(w http.ResponseWriter, r *http.Request) {
+	permissions, err := app.models.Permissions.GetAllPermissions()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"permissions": permissions}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) adminGetAllSuperUsersWithPermissionsHandler(w http.ResponseWriter, r *http.Request) {
+	superUsers, err := app.models.Admin.AdminGetAllSuperUsersWithPermissions()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"super_users": superUsers}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) adminCreateNewPermissionHandler(w http.ResponseWriter, r *http.Request) {
+	// we take in a permission in the format permissioncode:permission
+	// e.g admin:read
+	var input struct {
+		Permission string `json:"permission"`
+	}
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// get the permission
+	permission := input.Permission
+	// validate the data
+	v := validator.New()
+	if data.ValidatePermission(v, permission); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// insert the permission
+	newPermission, err := app.models.Admin.AdminCreateNewPermission(permission)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicatePermission):
+			v.AddError("permission", "permission already exists")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// write the data back
+	err = app.writeJSON(w, http.StatusCreated, envelope{"permission": newPermission}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -155,6 +220,9 @@ func (app *application) addPermissionsForUserHandler(w http.ResponseWriter, r *h
 	}
 }
 
+// adminCreatePaymentPlansHandler() is an admin route that allows the admin
+// to create a new payment/subscription plan. Any plan created and set to 'active'
+// will be shown to all other users. To hide plans, the status should be set to = 'inactive'
 func (app *application) adminCreatePaymentPlansHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name        string   `json:"name"`
@@ -187,7 +255,7 @@ func (app *application) adminCreatePaymentPlansHandler(w http.ResponseWriter, r 
 		return
 	}
 	// insert our data
-	err = app.models.Payments.AdminCreatePaymentPlans(paymentPlan)
+	err = app.models.Admin.AdminCreatePaymentPlans(paymentPlan)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrDuplicatePaymentPlan):
@@ -221,7 +289,7 @@ func (app *application) adminUpdatePaymentPlanHandler(w http.ResponseWriter, r *
 		return
 	}
 	// get our plan information from the DB
-	paymentPlan, err := app.models.Payments.AdminGetPaymentPlanByID(int32(paymentID))
+	paymentPlan, err := app.models.Admin.AdminGetPaymentPlanByID(int32(paymentID))
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -277,7 +345,7 @@ func (app *application) adminUpdatePaymentPlanHandler(w http.ResponseWriter, r *
 		return
 	}
 	// update the payment plan
-	err = app.models.Payments.AdminUpdatePaymentPlan(paymentPlan)
+	err = app.models.Admin.AdminUpdatePaymentPlan(paymentPlan)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrEditConflict):

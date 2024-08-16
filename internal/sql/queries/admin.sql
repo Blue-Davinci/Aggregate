@@ -137,3 +137,14 @@ RETURNING version;
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status, version
 FROM payment_plans
 WHERE id = $1;
+
+-- name: AdminCreateNewPermission :one
+INSERT INTO permissions (code)
+VALUES ($1)
+RETURNING id, code;
+
+-- name: AdminUpdatePermissionCode :one
+UPDATE permissions
+SET code = $2
+WHERE id = $1
+RETURNING id, code;

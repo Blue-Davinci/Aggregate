@@ -20,6 +20,18 @@ var (
 	ErrDuplicatePaymentPlan = errors.New("duplicate payment plan")
 )
 
+type SuperUsers struct {
+	UserID          int64           `json:"user_id"`
+	Name            string          `json:"name"`
+	User_Img        string          `json:"user_img"`
+	AdminPermission AdminPermission `json:"admin_permission"`
+}
+
+type AdminPermission struct {
+	Permission_ID   int64  `json:"permission_id"`
+	Permission_Code string `json:"permission_code"`
+}
+
 // Represents a user struct, with the permissions field being an array of strings.
 type AdminUser struct {
 	ID          int64       `json:"id"`
@@ -64,7 +76,7 @@ type CommentStatistics struct {
 }
 
 // AdminGetAllUsers() returns all available users in the DB. This route supports a full text search for the user Name as well
-func (m *AdminModel) AdminGetAllUsers(nameQuery string, filters Filters) ([]*AdminUser, Metadata, error) {
+func (m AdminModel) AdminGetAllUsers(nameQuery string, filters Filters) ([]*AdminUser, Metadata, error) {
 	// Create a context with a timeout of 3 seconds.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -118,7 +130,7 @@ func (m *AdminModel) AdminGetAllUsers(nameQuery string, filters Filters) ([]*Adm
 	return users, metadata, nil
 }
 
-func (m *PaymentsModel) AdminGetPaymentPlans() ([]*Payment_Plan, error) {
+func (m AdminModel) AdminGetPaymentPlans() ([]*Payment_Plan, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -153,7 +165,7 @@ func (m *PaymentsModel) AdminGetPaymentPlans() ([]*Payment_Plan, error) {
 }
 
 // AdminGetPaymentPlanByID
-func (m *PaymentsModel) AdminGetPaymentPlanByID(planID int32) (*Payment_Plan, error) {
+func (m AdminModel) AdminGetPaymentPlanByID(planID int32) (*Payment_Plan, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -188,8 +200,39 @@ func (m *PaymentsModel) AdminGetPaymentPlanByID(planID int32) (*Payment_Plan, er
 	return &payment_plan, nil
 }
 
+// GetAllSuperUsersWithPermissions() is an admin method that retrieves all super users
+// currently this method will return admins/moderators since they are the only individuals
+// with permissions in the system. But if and when the system is expanded to include other
+// permissions such as  "comment:write" for example to ban users from commenting, this
+// method will need to be updated to include/leave out those user.
+func (m AdminModel) AdminGetAllSuperUsersWithPermissions() ([]*SuperUsers, error) {
+	// set up context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	// create our permissions
+	var superUsers []*SuperUsers
+	// call the database method
+	dbSuperUsers, err := m.DB.GetAllSuperUsersWithPermissions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, superUser := range dbSuperUsers {
+		superUsers = append(superUsers, &SuperUsers{
+			UserID:   superUser.UserID,
+			Name:     superUser.Name,
+			User_Img: superUser.UserImg,
+			AdminPermission: AdminPermission{
+				Permission_ID:   superUser.PermissionID,
+				Permission_Code: superUser.PermissionCode,
+			},
+		})
+	}
+	// return permissions
+	return superUsers, nil
+}
+
 // AdminGetAllSubscriptions() returns all the subscriptions in the database.
-func (m *PaymentsModel) AdminGetAllSubscriptions(filters Filters) ([]*PaymentHistory, Metadata, error) {
+func (m AdminModel) AdminGetAllSubscriptions(filters Filters) ([]*PaymentHistory, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -241,7 +284,7 @@ func (m *PaymentsModel) AdminGetAllSubscriptions(filters Filters) ([]*PaymentHis
 }
 
 // AdminGetStatistics() returns all the statistics, aggregated together for representation in the frontend.
-func (m *AdminModel) AdminGetStatistics() (*AdminStatistics, error) {
+func (m AdminModel) AdminGetStatistics() (*AdminStatistics, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// Call the GetStatistics method from the database package.
@@ -287,7 +330,7 @@ func (m *AdminModel) AdminGetStatistics() (*AdminStatistics, error) {
 }
 
 // AdminCreatePaymentPlans() creates a new payment plan in the database.
-func (m *PaymentsModel) AdminCreatePaymentPlans(paymentPlan *Payment_Plan) error {
+func (m AdminModel) AdminCreatePaymentPlans(paymentPlan *Payment_Plan) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -315,20 +358,9 @@ func (m *PaymentsModel) AdminCreatePaymentPlans(paymentPlan *Payment_Plan) error
 	return nil
 }
 
-func (m *PaymentsModel) AdminUpdatePaymentPlan(paymentPlan *Payment_Plan) error {
+func (m AdminModel) AdminUpdatePaymentPlan(paymentPlan *Payment_Plan) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	/*
-			    Name        string
-		    Image       string
-		    Description sql.NullString
-		    Duration    string
-		    Price       string
-		    Features    []string
-		    Status      string
-		    ID          int32
-		    Version     int32
-	*/
 	// update the payment plan
 	// we also include the version to prevent edit conflicts
 	version, err := m.DB.AdminUpdatePaymentPlan(ctx, database.AdminUpdatePaymentPlanParams{
@@ -355,4 +387,24 @@ func (m *PaymentsModel) AdminUpdatePaymentPlan(paymentPlan *Payment_Plan) error 
 	paymentPlan.Version = version
 	// payment plan was updated successfully
 	return nil
+}
+
+// AdminCreateNewPermission() creates a new permission in the database.
+func (m AdminModel) AdminCreateNewPermission(permission string) (*AdminPermission, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	dbPermission, err := m.DB.AdminCreateNewPermission(ctx, permission)
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "unique_code"`:
+			return nil, ErrDuplicatePermission
+		default:
+			return nil, err
+		}
+	}
+	adminPermission := &AdminPermission{
+		Permission_ID:   dbPermission.ID,
+		Permission_Code: dbPermission.Code,
+	}
+	return adminPermission, nil
 }

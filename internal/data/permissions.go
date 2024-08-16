@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/blue-davinci/aggregate/internal/database"
@@ -41,6 +42,20 @@ func ValidatePermissionsDeletion(v *validator.Validator, userID int64, permissio
 	v.Check(userID != 0, "user_id", "must be provided")
 }
 
+func ValidatePermission(v *validator.Validator, permissionCode string) {
+	v.Check(permissionCode != "", "codes", "must be provided")
+	//check permission validity
+	v.Check(IsValidPermissionFormat(permissionCode), "permissions", "must be in the format 'permission:code'")
+}
+
+// Function to check if a permission matches the format "permission:code"
+func IsValidPermissionFormat(permission string) bool {
+	// Compile the regular expression
+	re := regexp.MustCompile(`^[a-zA-Z]+:[a-zA-Z]+$`)
+	// Check if the permission matches the format
+	return re.MatchString(permission)
+}
+
 // Make a slice to hold the the permission codes (like
 // "admin:read" and "admin:write") for an admin user.
 type Permissions []string
@@ -54,6 +69,26 @@ func (p Permissions) Include(code string) bool {
 		}
 	}
 	return false
+}
+
+// GetAllPermissions() just returns all available permissions currently in the system.
+func (m PermissionModel) GetAllPermissions() ([]*UserPermission, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	permissions, err := m.DB.GetAllPermissions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var allPermissions []*UserPermission
+	for _, permission := range permissions {
+		allPermissions = append(allPermissions, &UserPermission{
+			PermissionID: permission.ID,
+			Permissions:  []string{permission.Code},
+		})
+	}
+
+	return allPermissions, nil
 }
 
 // GetAllPermissionsForUser() is a method that retrieves all permissions for a specific user
@@ -105,6 +140,8 @@ func (m PermissionModel) AddPermissionsForUser(userID int64, codes ...string) (*
 	return userPermission, nil
 }
 
+// DeletePermissionsForUser() is an admin method that deletes permissions for a specific user
+// in the database. It expects the user's ID and a permission code as input.
 func (m PermissionModel) DeletePermissionsForUser(userID int64, permissionCode string) (int64, error) {
 	// Setup our context timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

@@ -13,6 +13,7 @@ import (
 // mounting all the routes we have in the application.
 func (app *application) routes() http.Handler {
 	router := chi.NewRouter()
+	// TODO: Add the CORS configuration here
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://adapted-healthy-monitor.ngrok-free.app", "http://localhost:5173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
@@ -174,8 +175,12 @@ func (app *application) adminRoutes() chi.Router {
 	// users
 	adminRoutes.Get("/users", app.adminGetAllUsersHandler)
 	// permissions
-	adminRoutes.Post("/permissions", app.addPermissionsForUserHandler)
-	adminRoutes.Delete("/permissions/{pCode}/{userID}", app.deletePermissionsForUserHandler)
+	adminRoutes.Get("/permissions", app.adminGetAllPermissionsHandler)
+	adminRoutes.Post("/permissions", app.adminCreateNewPermissionHandler)
+	// permission users
+	adminRoutes.Get("/permissions/users", app.adminGetAllSuperUsersWithPermissionsHandler)
+	adminRoutes.Post("/permissions/users", app.addPermissionsForUserHandler)
+	adminRoutes.Delete("/permissions/users/{pCode}/{userID}", app.deletePermissionsForUserHandler)
 	// statistics
 	adminRoutes.Get("/statistics", app.adminGetStatisticsHandler)
 	// payment plans

@@ -299,7 +299,7 @@ func ValidatePaymentPlan(v *validator.Validator, paymentPlan *Payment_Plan) {
 
 // GetSubscriptionByID will return a user's current subscription if it exists.
 // We take in a user's ID and return a pointer to a Subscription and an error.
-func (m *PaymentsModel) GetSubscriptionByID(userID int64) (*Subscription, error) {
+func (m PaymentsModel) GetSubscriptionByID(userID int64) (*Subscription, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -332,7 +332,7 @@ func (m *PaymentsModel) GetSubscriptionByID(userID int64) (*Subscription, error)
 // GetActiveOrNonExpiredSubscriptionByID() returns a user's active subscription
 // If a user has a ancelled subscription but the subscription is yet to expire
 // this will also be returned.
-func (m *PaymentsModel) GetActiveOrNonExpiredSubscriptionByID(userID int64) (*Subscription, error) {
+func (m PaymentsModel) GetActiveOrNonExpiredSubscriptionByID(userID int64) (*Subscription, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -367,7 +367,7 @@ func (m *PaymentsModel) GetActiveOrNonExpiredSubscriptionByID(userID int64) (*Su
 // the payment is successful. We return an error if the transaction fails.
 // We also return an error if we detect a pre-existing transaction/auth code
 // which denotes an already existing and active subscription.
-func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) error {
+func (m PaymentsModel) CreateSubscription(payment_detail *Payment_Details) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -405,7 +405,7 @@ func (m *PaymentsModel) CreateSubscription(payment_detail *Payment_Details) erro
 	return nil
 }
 
-func (m *PaymentsModel) CreateChallangedTransaction(subscription *RecurringSubscription, url, challanged_error, reference string) error {
+func (m PaymentsModel) CreateChallangedTransaction(subscription *RecurringSubscription, url, challanged_error, reference string) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -425,7 +425,7 @@ func (m *PaymentsModel) CreateChallangedTransaction(subscription *RecurringSubsc
 
 // CreateFailedTransaction will create a failed transaction in the database. This failed transactions will be used
 // by the admin to check the failed transactions and take necessary actions.
-func (m *PaymentsModel) CreateFailedTransaction(paymentDetails *Payment_Details, failure_reason, reference, error_code string) (int64, error) {
+func (m PaymentsModel) CreateFailedTransaction(paymentDetails *Payment_Details, failure_reason, reference, error_code string) (int64, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -449,7 +449,7 @@ func (m *PaymentsModel) CreateFailedTransaction(paymentDetails *Payment_Details,
 	return queryResult.ID, nil
 }
 
-func (m *PaymentsModel) GetPendingChallengedTransactionsByUser(userID int64) ([]*ChallengedTransaction, error) {
+func (m PaymentsModel) GetPendingChallengedTransactionsByUser(userID int64) ([]*ChallengedTransaction, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -479,7 +479,7 @@ func (m *PaymentsModel) GetPendingChallengedTransactionsByUser(userID int64) ([]
 
 // GetAllSubscriptionsByID() returns the subscription history of a user.
 // It also supports pagination and metadata reporting.
-func (m *PaymentsModel) GetAllSubscriptionsByID(userID int64, filters Filters) ([]*PaymentHistory, Metadata, error) {
+func (m PaymentsModel) GetAllSubscriptionsByID(userID int64, filters Filters) ([]*PaymentHistory, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -535,7 +535,7 @@ func (m *PaymentsModel) GetAllSubscriptionsByID(userID int64, filters Filters) (
 // The function supports pagination and metadata reporting.
 // It works in tandem with our expiration checker checking for all items
 // whose dates have passed and are expired
-func (m *PaymentsModel) GetAllExpiredSubscriptions(filters Filters) ([]*RecurringSubscription, Metadata, error) {
+func (m PaymentsModel) GetAllExpiredSubscriptions(filters Filters) ([]*RecurringSubscription, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -578,7 +578,7 @@ func (m *PaymentsModel) GetAllExpiredSubscriptions(filters Filters) ([]*Recurrin
 
 // GetPaymentDetailsByID will return an individual plan giving back all
 // available information about the plan.
-func (m *PaymentsModel) GetPaymentPlanByID(plan_ID int32) (*Payment_Plan, error) {
+func (m PaymentsModel) GetPaymentPlanByID(plan_ID int32) (*Payment_Plan, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -614,7 +614,7 @@ func (m *PaymentsModel) GetPaymentPlanByID(plan_ID int32) (*Payment_Plan, error)
 
 // GetPaymentPlans will return all the available payment plans.
 // It's a simple check and return.
-func (m *PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
+func (m PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -651,7 +651,7 @@ func (m *PaymentsModel) GetPaymentPlans() ([]*Payment_Plan, error) {
 // specific to a particulat user subscription.
 // We do this to prevent multiple transactions from being created for the same subscription.
 // especially when or during a recurring subscription charge
-func (m *PaymentsModel) GetPendingChallengedTransactionBySubscriptionID(subscriptionID uuid.UUID) (*ChallengedTransaction, error) {
+func (m PaymentsModel) GetPendingChallengedTransactionBySubscriptionID(subscriptionID uuid.UUID) (*ChallengedTransaction, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -680,7 +680,7 @@ func (m *PaymentsModel) GetPendingChallengedTransactionBySubscriptionID(subscrip
 // GetPendingChallengedTransactionByReference() gets a pending challenged transaction by reference.
 // This endpoint is for checking whether a verification transaction has been initiated for a particular
 // challenged transaction. If it is, we can then update the status of the challenged transaction.
-func (m *PaymentsModel) GetPendingChallengedTransactionByReference(transactionReference string) (*ChallengedTransaction, error) {
+func (m PaymentsModel) GetPendingChallengedTransactionByReference(transactionReference string) (*ChallengedTransaction, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -712,7 +712,7 @@ func (m *PaymentsModel) GetPendingChallengedTransactionByReference(transactionRe
 // being "expired" to "renewed".
 // This will help us keep track of finished transactions in the table. Also it will prevent
 // the subscription from being recharged again when the checker job runs.
-func (m *PaymentsModel) UpdateSubscriptionStatus(subscriptionID uuid.UUID, status string, userID int64) error {
+func (m PaymentsModel) UpdateSubscriptionStatus(subscriptionID uuid.UUID, status string, userID int64) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -730,7 +730,7 @@ func (m *PaymentsModel) UpdateSubscriptionStatus(subscriptionID uuid.UUID, statu
 
 // UpdateSubscriptionStatusAfterExpiration will update the status of all subscriptions
 // setting the ones that are expired to the status "expired".
-func (m *PaymentsModel) UpdateSubscriptionStatusAfterExpiration() ([]*Subscription, error) {
+func (m PaymentsModel) UpdateSubscriptionStatusAfterExpiration() ([]*Subscription, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -754,7 +754,7 @@ func (m *PaymentsModel) UpdateSubscriptionStatusAfterExpiration() ([]*Subscripti
 // UpdateChallengedTransactionStatus will update the status of a challenged transaction based on
 // whether it was successful or not. This function should only be hit when there is a subscription
 // that has been challenged receiving its ID and the status to set.
-func (m *PaymentsModel) UpdateChallengedTransactionStatus(challengedSubscriptionID, user_id int64, status string) (*ChallengedTransaction, error) {
+func (m PaymentsModel) UpdateChallengedTransactionStatus(challengedSubscriptionID, user_id int64, status string) (*ChallengedTransaction, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -782,7 +782,7 @@ func (m *PaymentsModel) UpdateChallengedTransactionStatus(challengedSubscription
 	return challengedSubscription, nil
 }
 
-func (m *PaymentsModel) UpdateExpiredChallengedTransactionStatus() ([]*ChallengedTransaction, error) {
+func (m PaymentsModel) UpdateExpiredChallengedTransactionStatus() ([]*ChallengedTransaction, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
