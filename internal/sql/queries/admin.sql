@@ -148,3 +148,8 @@ UPDATE permissions
 SET code = $2
 WHERE id = $1
 RETURNING id, code;
+
+-- name: AdminDeletePermission :one
+DELETE FROM permissions
+WHERE id = $1
+RETURNING id, code;

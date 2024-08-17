@@ -284,6 +284,7 @@ func (m AdminModel) AdminGetAllSubscriptions(filters Filters) ([]*PaymentHistory
 }
 
 // AdminGetStatistics() returns all the statistics, aggregated together for representation in the frontend.
+// Currently gets subscription, content and user statistics
 func (m AdminModel) AdminGetStatistics() (*AdminStatistics, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -358,6 +359,7 @@ func (m AdminModel) AdminCreatePaymentPlans(paymentPlan *Payment_Plan) error {
 	return nil
 }
 
+// AdminUpdatePaymentPlan() updates a payment plan in the database.
 func (m AdminModel) AdminUpdatePaymentPlan(paymentPlan *Payment_Plan) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -389,7 +391,31 @@ func (m AdminModel) AdminUpdatePaymentPlan(paymentPlan *Payment_Plan) error {
 	return nil
 }
 
+// AdminUpdatePermissionCode() updates the permission code for a specific permission.
+func (m AdminModel) AdminUpdatePermissionCode(permission AdminPermission) (*AdminPermission, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// update the permission code
+	_, err := m.DB.AdminUpdatePermissionCode(ctx, database.AdminUpdatePermissionCodeParams{
+		ID:   permission.Permission_ID,
+		Code: permission.Permission_Code,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrPermissionNotFound
+		default:
+			return nil, err
+		}
+	}
+	// no issues, we return the permission
+	return &permission, nil
+}
+
 // AdminCreateNewPermission() creates a new permission in the database.
+// This is a permission type that can be assigned to a user.
+// For example, a user can have the permission "admin:write" which grants
+// an admin the write permission to the admin section of the application.
 func (m AdminModel) AdminCreateNewPermission(permission string) (*AdminPermission, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -407,4 +433,23 @@ func (m AdminModel) AdminCreateNewPermission(permission string) (*AdminPermissio
 		Permission_Code: dbPermission.Code,
 	}
 	return adminPermission, nil
+}
+
+// AdminDeletePermission() deletes an exact permission from our list of
+// available permissions
+func (m AdminModel) AdminDeletePermission(permissionID int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// perform the deletion
+	_, err := m.DB.AdminDeletePermission(ctx, permissionID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrPermissionNotFound
+		default:
+			return err
+		}
+	}
+	// no issues, we return nil
+	return nil
 }

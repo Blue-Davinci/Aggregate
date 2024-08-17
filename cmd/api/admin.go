@@ -128,6 +128,9 @@ func (app *application) adminGetAllPermissionsHandler(w http.ResponseWriter, r *
 	}
 }
 
+// adminGetAllSuperUsersWithPermissionsHandler() returns all the users with active permissions
+// in the system. If you add additional permissions even for regular users such as
+// commern:write you'll need to filter those in here
 func (app *application) adminGetAllSuperUsersWithPermissionsHandler(w http.ResponseWriter, r *http.Request) {
 	superUsers, err := app.models.Admin.AdminGetAllSuperUsersWithPermissions()
 	if err != nil {
@@ -181,7 +184,7 @@ func (app *application) adminCreateNewPermissionHandler(w http.ResponseWriter, r
 // addPermissionsForUserHandler() is the endpoint handler responsible for allowing an admin
 // user to add permissions for a specific user. It expects a JSON request containing a
 // permissions array and a user's ID.
-func (app *application) addPermissionsForUserHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) adminAddPermissionsForUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Permissions []string `json:"permissions"`
 		UserID      int64    `json:"user_id"`
@@ -362,10 +365,58 @@ func (app *application) adminUpdatePaymentPlanHandler(w http.ResponseWriter, r *
 	}
 }
 
+// adminUpdatePermissionCodeHandler() is the endpoint handler responsible for allowing an admin
+// user to update the permission code for a specific permission. It expects a JSON request
+// containing the new permission code and a URL param with the code.
+func (app *application) adminUpdatePermissionCodeHandler(w http.ResponseWriter, r *http.Request) {
+	// we get the ID from the URL
+	permissionID, err := app.readIDIntParam(r, "pCode")
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// a reciever struct to obtain the new permission code
+	var input struct {
+		Permission string `json:"permission"`
+	}
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// create a ppermission
+	adminPermission := data.AdminPermission{
+		Permission_ID:   permissionID,
+		Permission_Code: input.Permission,
+	}
+	// validate the data
+	v := validator.New()
+	if data.ValidatePermissionsDeletion(v, adminPermission.Permission_ID, adminPermission.Permission_Code); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// update the permission
+	permission, err := app.models.Admin.AdminUpdatePermissionCode(adminPermission)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrPermissionNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// write the data back
+	err = app.writeJSON(w, http.StatusOK, envelope{"permission": permission}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // deletePermissionsForUserHandler() is the endpoint handler responsible for allowing an admin
 // user to delete permissions for a specific user. It expects a parameterized url taking
 // in the permission code and user id i.e /v1/admin/:permissionCode/:userID
-func (app *application) deletePermissionsForUserHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) adminDeletePermissionsForUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := app.readIDIntParam(r, "userID")
 	if err != nil {
 		app.badRequestResponse(w, r, err)
@@ -396,6 +447,35 @@ func (app *application) deletePermissionsForUserHandler(w http.ResponseWriter, r
 	}
 	// write the data back with a message on success
 	err = app.writeJSON(w, http.StatusOK, envelope{"message": "permission(s) deleted successfully"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) adminDeletePermissionHandler(w http.ResponseWriter, r *http.Request) {
+	permissionID, err := app.readIDIntParam(r, "pCode")
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// validate data
+	if permissionID == 0 {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// delete the permission
+	err = app.models.Admin.AdminDeletePermission(permissionID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrPermissionNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// write the data back with a message on success
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "permission deleted successfully"}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

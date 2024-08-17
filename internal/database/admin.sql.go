@@ -73,6 +73,19 @@ func (q *Queries) AdminCreatePaymentPlan(ctx context.Context, arg AdminCreatePay
 	return i, err
 }
 
+const adminDeletePermission = `-- name: AdminDeletePermission :one
+DELETE FROM permissions
+WHERE id = $1
+RETURNING id, code
+`
+
+func (q *Queries) AdminDeletePermission(ctx context.Context, id int64) (Permission, error) {
+	row := q.db.QueryRowContext(ctx, adminDeletePermission, id)
+	var i Permission
+	err := row.Scan(&i.ID, &i.Code)
+	return i, err
+}
+
 const adminGetAllPaymentPlans = `-- name: AdminGetAllPaymentPlans :many
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status,version
 FROM payment_plans
@@ -447,4 +460,23 @@ func (q *Queries) AdminUpdatePaymentPlan(ctx context.Context, arg AdminUpdatePay
 	var version int32
 	err := row.Scan(&version)
 	return version, err
+}
+
+const adminUpdatePermissionCode = `-- name: AdminUpdatePermissionCode :one
+UPDATE permissions
+SET code = $2
+WHERE id = $1
+RETURNING id, code
+`
+
+type AdminUpdatePermissionCodeParams struct {
+	ID   int64
+	Code string
+}
+
+func (q *Queries) AdminUpdatePermissionCode(ctx context.Context, arg AdminUpdatePermissionCodeParams) (Permission, error) {
+	row := q.db.QueryRowContext(ctx, adminUpdatePermissionCode, arg.ID, arg.Code)
+	var i Permission
+	err := row.Scan(&i.ID, &i.Code)
+	return i, err
 }

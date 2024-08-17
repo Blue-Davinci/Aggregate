@@ -177,10 +177,12 @@ func (app *application) adminRoutes() chi.Router {
 	// permissions
 	adminRoutes.Get("/permissions", app.adminGetAllPermissionsHandler)
 	adminRoutes.Post("/permissions", app.adminCreateNewPermissionHandler)
+	adminRoutes.Delete("/permissions/{pCode}", app.adminDeletePermissionHandler)
+	adminRoutes.Put("/permissions/{pCode}", app.adminUpdatePermissionCodeHandler)
 	// permission users
 	adminRoutes.Get("/permissions/users", app.adminGetAllSuperUsersWithPermissionsHandler)
-	adminRoutes.Post("/permissions/users", app.addPermissionsForUserHandler)
-	adminRoutes.Delete("/permissions/users/{pCode}/{userID}", app.deletePermissionsForUserHandler)
+	adminRoutes.Post("/permissions/users", app.adminAddPermissionsForUserHandler)
+	adminRoutes.Delete("/permissions/users/{pCode}/{userID}", app.adminDeletePermissionsForUserHandler)
 	// statistics
 	adminRoutes.Get("/statistics", app.adminGetStatisticsHandler)
 	// payment plans
