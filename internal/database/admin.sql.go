@@ -147,7 +147,15 @@ SELECT
     s.card_type, 
     s.currency, 
     s.created_at, 
-    s.updated_at
+    s.updated_at,
+    CASE 
+        WHEN EXISTS (
+            SELECT 1
+            FROM challenged_transactions ct
+            WHERE ct.referenced_subscription_id = s.id
+        ) THEN true
+        ELSE false
+    END AS has_challenged_transactions
 FROM 
     subscriptions s
 JOIN 
@@ -163,26 +171,27 @@ type AdminGetAllSubscriptionsParams struct {
 }
 
 type AdminGetAllSubscriptionsRow struct {
-	TotalRecords  int64
-	ID            uuid.UUID
-	UserID        int64
-	PlanID        int32
-	PlanName      string
-	PlanImage     string
-	PlanDuration  string
-	StartDate     time.Time
-	EndDate       time.Time
-	Price         string
-	Status        string
-	TransactionID int64
-	PaymentMethod sql.NullString
-	CardLast4     sql.NullString
-	CardExpMonth  sql.NullString
-	CardExpYear   sql.NullString
-	CardType      sql.NullString
-	Currency      sql.NullString
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	TotalRecords              int64
+	ID                        uuid.UUID
+	UserID                    int64
+	PlanID                    int32
+	PlanName                  string
+	PlanImage                 string
+	PlanDuration              string
+	StartDate                 time.Time
+	EndDate                   time.Time
+	Price                     string
+	Status                    string
+	TransactionID             int64
+	PaymentMethod             sql.NullString
+	CardLast4                 sql.NullString
+	CardExpMonth              sql.NullString
+	CardExpYear               sql.NullString
+	CardType                  sql.NullString
+	Currency                  sql.NullString
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	HasChallengedTransactions bool
 }
 
 func (q *Queries) AdminGetAllSubscriptions(ctx context.Context, arg AdminGetAllSubscriptionsParams) ([]AdminGetAllSubscriptionsRow, error) {
@@ -215,6 +224,7 @@ func (q *Queries) AdminGetAllSubscriptions(ctx context.Context, arg AdminGetAllS
 			&i.Currency,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.HasChallengedTransactions,
 		); err != nil {
 			return nil, err
 		}

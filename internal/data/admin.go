@@ -20,6 +20,11 @@ var (
 	ErrDuplicatePaymentPlan = errors.New("duplicate payment plan")
 )
 
+type AdminPaymentHistory struct {
+	PaymentHistory              PaymentHistory `json:"payment_history"`
+	Has_Challenged_Transactions bool           `json:"has_challenged_transactions"`
+}
+
 type SuperUsers struct {
 	UserID          int64           `json:"user_id"`
 	Name            string          `json:"name"`
@@ -232,7 +237,7 @@ func (m AdminModel) AdminGetAllSuperUsersWithPermissions() ([]*SuperUsers, error
 }
 
 // AdminGetAllSubscriptions() returns all the subscriptions in the database.
-func (m AdminModel) AdminGetAllSubscriptions(filters Filters) ([]*PaymentHistory, Metadata, error) {
+func (m AdminModel) AdminGetAllSubscriptions(filters Filters) ([]*AdminPaymentHistory, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -244,7 +249,7 @@ func (m AdminModel) AdminGetAllSubscriptions(filters Filters) ([]*PaymentHistory
 		return nil, Metadata{}, err
 	}
 	totalRecords := 0
-	payment_histories := []*PaymentHistory{}
+	admin_payment_histories := []*AdminPaymentHistory{}
 	for _, row := range rows {
 		var payment_history PaymentHistory
 		totalRecords = int(row.TotalRecords)
@@ -275,12 +280,18 @@ func (m AdminModel) AdminGetAllSubscriptions(filters Filters) ([]*PaymentHistory
 		subscription.Price = int64(price)
 		subscription.Status = row.Status
 		payment_history.Subscription = subscription
-		payment_histories = append(payment_histories, &payment_history)
+		// type asser
+		// aggregate the payment history
+		admin_payment := &AdminPaymentHistory{
+			PaymentHistory:              payment_history,
+			Has_Challenged_Transactions: row.HasChallengedTransactions,
+		}
+		admin_payment_histories = append(admin_payment_histories, admin_payment)
 	}
 	fmt.Println("Total rows: ", totalRecords)
 	// calculate the metadata
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
-	return payment_histories, metadata, nil
+	return admin_payment_histories, metadata, nil
 }
 
 // AdminGetStatistics() returns all the statistics, aggregated together for representation in the frontend.

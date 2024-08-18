@@ -52,7 +52,15 @@ SELECT
     s.card_type, 
     s.currency, 
     s.created_at, 
-    s.updated_at
+    s.updated_at,
+    CASE 
+        WHEN EXISTS (
+            SELECT 1
+            FROM challenged_transactions ct
+            WHERE ct.referenced_subscription_id = s.id
+        ) THEN true
+        ELSE false
+    END AS has_challenged_transactions
 FROM 
     subscriptions s
 JOIN 
@@ -60,6 +68,8 @@ JOIN
 ORDER BY 
     s.start_date DESC
 LIMIT $1 OFFSET $2;
+
+
 
 -- name: AdminGetStatistics :one
 WITH
