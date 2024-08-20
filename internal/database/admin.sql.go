@@ -322,6 +322,94 @@ func (q *Queries) AdminGetAllUsers(ctx context.Context, arg AdminGetAllUsersPara
 	return items, nil
 }
 
+const adminGetChallengedTransactionsBySubscriptionID = `-- name: AdminGetChallengedTransactionsBySubscriptionID :many
+SELECT 
+    ct.id AS transaction_id,
+    ct.user_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    u.user_img AS user_img,
+    ct.referenced_subscription_id,
+    ct.authorization_url,
+    ct.reference,
+    ct.created_at,
+    ct.updated_at,
+    ct.status,
+    s.plan_id,
+    s.price,
+    s.start_date,
+    s.end_date
+FROM 
+    challenged_transactions ct
+JOIN 
+    subscriptions s 
+ON 
+    ct.referenced_subscription_id = s.id
+JOIN 
+    users u
+ON 
+    ct.user_id = u.id
+WHERE 
+    ct.referenced_subscription_id = $1
+`
+
+type AdminGetChallengedTransactionsBySubscriptionIDRow struct {
+	TransactionID            int64
+	UserID                   int64
+	UserName                 string
+	UserEmail                string
+	UserImg                  string
+	ReferencedSubscriptionID uuid.UUID
+	AuthorizationUrl         string
+	Reference                string
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	Status                   string
+	PlanID                   int32
+	Price                    string
+	StartDate                time.Time
+	EndDate                  time.Time
+}
+
+func (q *Queries) AdminGetChallengedTransactionsBySubscriptionID(ctx context.Context, referencedSubscriptionID uuid.UUID) ([]AdminGetChallengedTransactionsBySubscriptionIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetChallengedTransactionsBySubscriptionID, referencedSubscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetChallengedTransactionsBySubscriptionIDRow
+	for rows.Next() {
+		var i AdminGetChallengedTransactionsBySubscriptionIDRow
+		if err := rows.Scan(
+			&i.TransactionID,
+			&i.UserID,
+			&i.UserName,
+			&i.UserEmail,
+			&i.UserImg,
+			&i.ReferencedSubscriptionID,
+			&i.AuthorizationUrl,
+			&i.Reference,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Status,
+			&i.PlanID,
+			&i.Price,
+			&i.StartDate,
+			&i.EndDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const adminGetPaymentPlanByID = `-- name: AdminGetPaymentPlanByID :one
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status, version
 FROM payment_plans

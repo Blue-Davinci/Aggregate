@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/blue-davinci/aggregate/internal/database"
+	"github.com/google/uuid"
 )
 
 type AdminModel struct {
@@ -23,6 +24,17 @@ var (
 type AdminPaymentHistory struct {
 	PaymentHistory              PaymentHistory `json:"payment_history"`
 	Has_Challenged_Transactions bool           `json:"has_challenged_transactions"`
+}
+
+type AdminChallangedTransaction struct {
+	ChallengedTransaction ChallengedTransaction `json:"challenged_transaction"`
+	PlanID                int32                 `json:"plan_id"`
+	PlanPrice             int64                 `json:"plan_price"`
+	Start_Date            time.Time             `json:"start_date"`
+	End_Date              time.Time             `json:"end_date"`
+	UserName              string                `json:"user_name"`
+	UserEmail             string                `json:"user_email"`
+	UserImg               string                `json:"user_img"`
 }
 
 type SuperUsers struct {
@@ -288,10 +300,55 @@ func (m AdminModel) AdminGetAllSubscriptions(filters Filters) ([]*AdminPaymentHi
 		}
 		admin_payment_histories = append(admin_payment_histories, admin_payment)
 	}
-	fmt.Println("Total rows: ", totalRecords)
+	//fmt.Println("Total rows: ", totalRecords)
 	// calculate the metadata
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 	return admin_payment_histories, metadata, nil
+}
+
+// AdminGetChallaengedTransactionsBySubscriptionID() returns all the challenged transactions for a specific subscription.
+// the item includes the infor for the challenged transaction alongside plan details, user details.
+// The search is by the subscription ID
+func (m AdminModel) AdminGetChallaengedTransactionsBySubscriptionID(subscriptionID uuid.UUID) ([]*AdminChallangedTransaction, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	rows, err := m.DB.AdminGetChallengedTransactionsBySubscriptionID(ctx, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	admin_challenged_transactions := []*AdminChallangedTransaction{}
+	for _, row := range rows {
+		var admin_challenged_transaction AdminChallangedTransaction
+		var challenged_transaction ChallengedTransaction
+		challenged_transaction.ID = row.TransactionID
+		challenged_transaction.User_ID = row.UserID
+		challenged_transaction.ReferencedSubscriptionID = row.ReferencedSubscriptionID
+		challenged_transaction.Reference = row.Reference
+		challenged_transaction.AuthorizationUrl = row.AuthorizationUrl
+		challenged_transaction.Created_At = row.CreatedAt
+		challenged_transaction.Updated_At = row.UpdatedAt
+		challenged_transaction.Status = row.Status
+
+		// add additional info
+		admin_challenged_transaction.ChallengedTransaction = challenged_transaction
+		admin_challenged_transaction.PlanID = row.PlanID
+		priceStr := row.Price
+		price, err := strconv.ParseFloat(priceStr, 64)
+		if err != nil {
+			return nil, err
+		}
+		admin_challenged_transaction.PlanPrice = int64(price)
+		admin_challenged_transaction.Start_Date = row.StartDate
+		admin_challenged_transaction.End_Date = row.EndDate
+		// user data
+		admin_challenged_transaction.UserName = row.UserName
+		admin_challenged_transaction.UserEmail = row.UserEmail
+		admin_challenged_transaction.UserImg = row.UserImg
+		// append to the list
+		admin_challenged_transactions = append(admin_challenged_transactions, &admin_challenged_transaction)
+	}
+	return admin_challenged_transactions, nil
 }
 
 // AdminGetStatistics() returns all the statistics, aggregated together for representation in the frontend.

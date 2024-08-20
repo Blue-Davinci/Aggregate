@@ -439,7 +439,7 @@ func (app *application) startPaymentSubscriptionHandler() {
 	expiryCheckInterval := fmt.Sprintf("*/%d * * * *", app.config.paystack.checkexpiredsubscriptioninterval)
 	// get our challenged transaction check interval from the flag
 	//app.config.paystack.checkexpiredchallengedsubscriptioninterval
-	expiryChallengedTransactionInterval := fmt.Sprintf("*/%d * * * *", 1)
+	expiryChallengedTransactionInterval := fmt.Sprintf("*/%d * * * *", app.config.paystack.checkexpiredchallengedsubscriptioninterval)
 
 	// add the autosubscription handler to the cron job
 	_, err := app.config.paystack.cronJob.AddFunc(autoSubscriptionInterval, app.autoSubscriptionHandler)

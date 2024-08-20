@@ -7,6 +7,7 @@ import (
 
 	"github.com/blue-davinci/aggregate/internal/data"
 	"github.com/blue-davinci/aggregate/internal/validator"
+	"github.com/google/uuid"
 )
 
 // adminGetAllUsersHandler() is the admin endpoint that returns all available
@@ -113,6 +114,26 @@ func (app *application) adminGetAllSubscriptionsHandler(w http.ResponseWriter, r
 	}
 }
 
+// adminGetAllTransactionsHandler() is the endpoint handler responsible for returning all the
+// available challenged transactions for a specific subscription.
+func (app *application) adminGetChallaengedTransactionsBySubscriptionIDHandler(w http.ResponseWriter, r *http.Request) {
+	subscriptionID, err := app.readIDParam(r, "subscriptionID")
+	if err != nil || subscriptionID == uuid.Nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// get the transactions
+	transactions, err := app.models.Admin.AdminGetChallaengedTransactionsBySubscriptionID(subscriptionID)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"transactions": transactions}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // adminGetAllPermissionsHandler() is an admin endpoint that returns all the available
 // permissions in the system. This is useful for the admin to see what permissions are
 // available to assign to users.
@@ -176,6 +197,18 @@ func (app *application) adminCreateNewPermissionHandler(w http.ResponseWriter, r
 	}
 	// write the data back
 	err = app.writeJSON(w, http.StatusCreated, envelope{"permission": newPermission}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) adminGetSubscriptionStatsReports(w http.ResponseWriter, r *http.Request) {
+	stats, err := app.models.Admin.AdminGetSubscriptionStatsReports()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"stats": stats}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

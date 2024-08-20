@@ -70,6 +70,35 @@ ORDER BY
 LIMIT $1 OFFSET $2;
 
 
+-- name: AdminGetChallengedTransactionsBySubscriptionID :many
+SELECT 
+    ct.id AS transaction_id,
+    ct.user_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    u.user_img AS user_img,
+    ct.referenced_subscription_id,
+    ct.authorization_url,
+    ct.reference,
+    ct.created_at,
+    ct.updated_at,
+    ct.status,
+    s.plan_id,
+    s.price,
+    s.start_date,
+    s.end_date
+FROM 
+    challenged_transactions ct
+JOIN 
+    subscriptions s 
+ON 
+    ct.referenced_subscription_id = s.id
+JOIN 
+    users u
+ON 
+    ct.user_id = u.id
+WHERE 
+    ct.referenced_subscription_id = $1;
 
 -- name: AdminGetStatistics :one
 WITH
@@ -163,3 +192,4 @@ RETURNING id, code;
 DELETE FROM permissions
 WHERE id = $1
 RETURNING id, code;
+

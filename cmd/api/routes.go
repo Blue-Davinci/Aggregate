@@ -191,5 +191,7 @@ func (app *application) adminRoutes() chi.Router {
 	adminRoutes.Patch("/payment-plans/{planID}", app.adminUpdatePaymentPlanHandler)
 	// subscriptions
 	adminRoutes.Get("/subscriptions", app.adminGetAllSubscriptionsHandler)
+	adminRoutes.Get("/subscriptions/challenged/{subscriptionID}", app.adminGetChallaengedTransactionsBySubscriptionIDHandler)
+	adminRoutes.Get("/subscriptions/reports", app.adminGetSubscriptionStatsReports)
 	return adminRoutes
 }
