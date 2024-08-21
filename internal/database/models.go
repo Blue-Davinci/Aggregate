@@ -140,6 +140,23 @@ type RssfeedPost struct {
 	FeedID             uuid.UUID
 }
 
+type ScraperErrorLog struct {
+	ID              int32
+	ErrorType       string
+	Message         sql.NullString
+	FeedUrl         sql.NullString
+	OccurredAt      sql.NullTime
+	StatusCode      sql.NullInt32
+	RetryAttempts   sql.NullInt32
+	AdminNotified   sql.NullBool
+	Resolved        sql.NullBool
+	ResolutionNotes sql.NullString
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+	OccurrenceCount sql.NullInt32
+	LastOccurrence  sql.NullTime
+}
+
 type Subscription struct {
 	ID                uuid.UUID
 	UserID            int64

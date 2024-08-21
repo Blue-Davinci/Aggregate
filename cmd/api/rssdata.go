@@ -80,10 +80,26 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 					"URL":  feed.Url,
 				})
 			case err == data.ErrUnableToDetectFeedType:
+				//insert the feed into the database
+				errorDetail := data.ScraperErrorLog{
+					ErrorType:       data.FeedTypeErrorType,
+					Message:         err.Error(),
+					FeedURL:         feed.Url,
+					OccurredAt:      time.Now().UTC(),
+					StatusCode:      rssFeeds.StatusCode,
+					RetryAttempts:   rssFeeds.RetryMax,
+					AdminNotified:   false,
+					Resolved:        false,
+					ResolutionNotes: "",
+				}
+				// Insert the error into the database
+				_ = app.scraperInsertScraperError(&errorDetail)
+
 				app.logger.PrintInfo(err.Error(), map[string]string{
 					"Feed": feed.Name,
 					"URL":  feed.Url,
 				})
+
 			default:
 				app.logger.PrintError(err, map[string]string{
 					"Error Fetching RSS Feeds": "GetRSSFeeds",
@@ -428,4 +444,17 @@ func (app *application) GetDetailedFavoriteRSSPosts(w http.ResponseWriter, r *ht
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
+}
+
+// / Helpers
+func (app *application) scraperInsertScraperError(errorDetail *data.ScraperErrorLog) error {
+	err := app.models.ErrorLogs.InsertScraperErrorLog(errorDetail)
+	// log the error if we can't insert it
+	if err != nil {
+		app.logger.PrintError(err, map[string]string{
+			"Error Inserting Scraper Error Log": "InsertScraperErrorLog",
+		})
+		return err
+	}
+	return nil
 }

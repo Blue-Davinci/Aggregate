@@ -193,5 +193,7 @@ func (app *application) adminRoutes() chi.Router {
 	adminRoutes.Get("/subscriptions", app.adminGetAllSubscriptionsHandler)
 	adminRoutes.Get("/subscriptions/challenged/{subscriptionID}", app.adminGetChallaengedTransactionsBySubscriptionIDHandler)
 	adminRoutes.Get("/subscriptions/reports", app.adminGetSubscriptionStatsReports)
+	// errors
+	adminRoutes.Get("/errors", app.adminGetAllScraperErrorLogs)
 	return adminRoutes
 }

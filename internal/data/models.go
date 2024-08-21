@@ -25,6 +25,7 @@ type Models struct {
 	Limitations   LimitationsModel
 	Permissions   PermissionModel
 	Admin         AdminModel
+	ErrorLogs     ErrorLogsDataModel
 	//feed models
 }
 
@@ -42,5 +43,6 @@ func NewModels(db *database.Queries) Models {
 		Limitations:   LimitationsModel{DB: db},
 		Permissions:   PermissionModel{DB: db},
 		Admin:         AdminModel{DB: db},
+		ErrorLogs:     ErrorLogsDataModel{DB: db},
 	}
 }

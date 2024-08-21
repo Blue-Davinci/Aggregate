@@ -62,6 +62,8 @@ type RSSFeed struct {
 		Language    string    `xml:"language"`
 		Item        []RSSItem `xml:"item"`
 	} `xml:"channel"`
+	RetryMax   int32 `json:"-"`
+	StatusCode int32 `json:"-"`
 }
 
 type RSSItem struct {
@@ -497,7 +499,7 @@ func (m RSSFeedDataModel) GetRSSFeeds(retryMax, clientTimeout int, url string) (
 		case strings.Contains(err.Error(), "context deadline exceeded"):
 			return RSSFeed{}, ErrContextDeadline
 		case strings.Contains(err.Error(), "feed type"):
-			return RSSFeed{}, ErrUnableToDetectFeedType
+			return RSSFeed{RetryMax: int32(retryMax), StatusCode: int32(resp.StatusCode)}, ErrUnableToDetectFeedType
 		default:
 			return RSSFeed{}, err
 		}
