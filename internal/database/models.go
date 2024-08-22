@@ -144,7 +144,7 @@ type ScraperErrorLog struct {
 	ID              int32
 	ErrorType       string
 	Message         sql.NullString
-	FeedUrl         sql.NullString
+	FeedID          uuid.UUID
 	OccurredAt      sql.NullTime
 	StatusCode      sql.NullInt32
 	RetryAttempts   sql.NullInt32

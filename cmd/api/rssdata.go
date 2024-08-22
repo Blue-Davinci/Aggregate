@@ -84,7 +84,7 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 				errorDetail := data.ScraperErrorLog{
 					ErrorType:       data.FeedTypeErrorType,
 					Message:         err.Error(),
-					FeedURL:         feed.Url,
+					FeedID:          feed.ID,
 					OccurredAt:      time.Now().UTC(),
 					StatusCode:      rssFeeds.StatusCode,
 					RetryAttempts:   rssFeeds.RetryMax,
@@ -94,7 +94,7 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 				}
 				// Insert the error into the database
 				_ = app.scraperInsertScraperError(&errorDetail)
-
+				// log the error
 				app.logger.PrintInfo(err.Error(), map[string]string{
 					"Feed": feed.Name,
 					"URL":  feed.Url,

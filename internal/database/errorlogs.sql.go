@@ -8,15 +8,17 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 const createScraperErrorLog = `-- name: CreateScraperErrorLog :one
 INSERT INTO scraper_error_logs (
-    error_type, message, feed_url, status_code, retry_attempts, admin_notified, resolved, resolution_notes, occurred_at, created_at, updated_at
+    error_type, message, feed_id, status_code, retry_attempts, admin_notified, resolved, resolution_notes, occurred_at, created_at, updated_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()
 )
-ON CONFLICT (error_type, feed_url)
+ON CONFLICT (error_type, feed_id)
 DO UPDATE SET
     occurrence_count = scraper_error_logs.occurrence_count + 1,
     last_occurrence = NOW(),
@@ -30,7 +32,7 @@ RETURNING id, created_at, updated_at, occurrence_count, last_occurrence
 type CreateScraperErrorLogParams struct {
 	ErrorType       string
 	Message         sql.NullString
-	FeedUrl         sql.NullString
+	FeedID          uuid.UUID
 	StatusCode      sql.NullInt32
 	RetryAttempts   sql.NullInt32
 	AdminNotified   sql.NullBool
@@ -51,7 +53,7 @@ func (q *Queries) CreateScraperErrorLog(ctx context.Context, arg CreateScraperEr
 	row := q.db.QueryRowContext(ctx, createScraperErrorLog,
 		arg.ErrorType,
 		arg.Message,
-		arg.FeedUrl,
+		arg.FeedID,
 		arg.StatusCode,
 		arg.RetryAttempts,
 		arg.AdminNotified,
@@ -70,25 +72,31 @@ func (q *Queries) CreateScraperErrorLog(ctx context.Context, arg CreateScraperEr
 	return i, err
 }
 
-const deleteScraperErrorLogByID = `-- name: DeleteScraperErrorLogByID :exec
+const deleteScraperErrorLogByID = `-- name: DeleteScraperErrorLogByID :one
 DELETE FROM scraper_error_logs
 WHERE 
     id = $1
+RETURNING id
 `
 
-func (q *Queries) DeleteScraperErrorLogByID(ctx context.Context, id int32) error {
-	_, err := q.db.ExecContext(ctx, deleteScraperErrorLogByID, id)
-	return err
+func (q *Queries) DeleteScraperErrorLogByID(ctx context.Context, id int32) (int32, error) {
+	row := q.db.QueryRowContext(ctx, deleteScraperErrorLogByID, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getAllScraperErrorLogs = `-- name: GetAllScraperErrorLogs :many
 SELECT 
     COUNT(*) OVER() AS total_count,
-    id, error_type, message, feed_url, occurred_at, status_code, retry_attempts, admin_notified, resolved, resolution_notes, created_at, updated_at, occurrence_count, last_occurrence
+    sel.id, sel.error_type, sel.message, sel.feed_id, f.name as feed_name, f.url as feed_url, f.img_url as feed_img_url,
+    sel.occurred_at, sel.status_code, sel.retry_attempts, sel.admin_notified, sel.resolved, 
+    sel.resolution_notes, sel.created_at, sel.updated_at, sel.occurrence_count, sel.last_occurrence
 FROM 
-    scraper_error_logs
+    scraper_error_logs sel
+JOIN 
+    feeds f ON sel.feed_id = f.id
 ORDER BY 
-    occurred_at DESC
+    sel.occurred_at DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -102,7 +110,10 @@ type GetAllScraperErrorLogsRow struct {
 	ID              int32
 	ErrorType       string
 	Message         sql.NullString
-	FeedUrl         sql.NullString
+	FeedID          uuid.UUID
+	FeedName        string
+	FeedUrl         string
+	FeedImgUrl      string
 	OccurredAt      sql.NullTime
 	StatusCode      sql.NullInt32
 	RetryAttempts   sql.NullInt32
@@ -129,7 +140,10 @@ func (q *Queries) GetAllScraperErrorLogs(ctx context.Context, arg GetAllScraperE
 			&i.ID,
 			&i.ErrorType,
 			&i.Message,
+			&i.FeedID,
+			&i.FeedName,
 			&i.FeedUrl,
+			&i.FeedImgUrl,
 			&i.OccurredAt,
 			&i.StatusCode,
 			&i.RetryAttempts,
@@ -156,21 +170,48 @@ func (q *Queries) GetAllScraperErrorLogs(ctx context.Context, arg GetAllScraperE
 
 const getScraperErrorLogByID = `-- name: GetScraperErrorLogByID :one
 SELECT 
-    id, error_type, message, feed_url, occurred_at, status_code, retry_attempts, admin_notified, resolved, resolution_notes, created_at, updated_at, occurrence_count, last_occurrence
+    sel.id, sel.error_type, sel.message, sel.feed_id, f.name as feed_name, f.url as feed_url, f.img_url as feed_img_url, 
+    sel.occurred_at, sel.status_code, sel.retry_attempts, sel.admin_notified, sel.resolved, 
+    sel.resolution_notes, sel.created_at, sel.updated_at, sel.occurrence_count, sel.last_occurrence
 FROM 
-    scraper_error_logs
+    scraper_error_logs sel
+JOIN 
+    feeds f ON sel.feed_id = f.id
 WHERE 
-    id = $1
+    sel.id = $1
 `
 
-func (q *Queries) GetScraperErrorLogByID(ctx context.Context, id int32) (ScraperErrorLog, error) {
+type GetScraperErrorLogByIDRow struct {
+	ID              int32
+	ErrorType       string
+	Message         sql.NullString
+	FeedID          uuid.UUID
+	FeedName        string
+	FeedUrl         string
+	FeedImgUrl      string
+	OccurredAt      sql.NullTime
+	StatusCode      sql.NullInt32
+	RetryAttempts   sql.NullInt32
+	AdminNotified   sql.NullBool
+	Resolved        sql.NullBool
+	ResolutionNotes sql.NullString
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+	OccurrenceCount sql.NullInt32
+	LastOccurrence  sql.NullTime
+}
+
+func (q *Queries) GetScraperErrorLogByID(ctx context.Context, id int32) (GetScraperErrorLogByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getScraperErrorLogByID, id)
-	var i ScraperErrorLog
+	var i GetScraperErrorLogByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ErrorType,
 		&i.Message,
+		&i.FeedID,
+		&i.FeedName,
 		&i.FeedUrl,
+		&i.FeedImgUrl,
 		&i.OccurredAt,
 		&i.StatusCode,
 		&i.RetryAttempts,
@@ -181,6 +222,50 @@ func (q *Queries) GetScraperErrorLogByID(ctx context.Context, id int32) (Scraper
 		&i.UpdatedAt,
 		&i.OccurrenceCount,
 		&i.LastOccurrence,
+	)
+	return i, err
+}
+
+const updateScraperErrorLog = `-- name: UpdateScraperErrorLog :one
+UPDATE scraper_error_logs
+SET
+    admin_notified = $1,
+    resolved = $2,
+    resolution_notes = $3,
+    updated_at = NOW()
+WHERE id = $4
+RETURNING id, admin_notified, resolved, resolution_notes, updated_at
+`
+
+type UpdateScraperErrorLogParams struct {
+	AdminNotified   sql.NullBool
+	Resolved        sql.NullBool
+	ResolutionNotes sql.NullString
+	ID              int32
+}
+
+type UpdateScraperErrorLogRow struct {
+	ID              int32
+	AdminNotified   sql.NullBool
+	Resolved        sql.NullBool
+	ResolutionNotes sql.NullString
+	UpdatedAt       sql.NullTime
+}
+
+func (q *Queries) UpdateScraperErrorLog(ctx context.Context, arg UpdateScraperErrorLogParams) (UpdateScraperErrorLogRow, error) {
+	row := q.db.QueryRowContext(ctx, updateScraperErrorLog,
+		arg.AdminNotified,
+		arg.Resolved,
+		arg.ResolutionNotes,
+		arg.ID,
+	)
+	var i UpdateScraperErrorLogRow
+	err := row.Scan(
+		&i.ID,
+		&i.AdminNotified,
+		&i.Resolved,
+		&i.ResolutionNotes,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

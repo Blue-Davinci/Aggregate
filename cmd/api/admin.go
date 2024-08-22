@@ -115,6 +115,97 @@ func (app *application) adminGetAllScraperErrorLogs(w http.ResponseWriter, r *ht
 	}
 }
 
+func (app *application) adminUpdateScraperErrorLog(w http.ResponseWriter, r *http.Request) {
+	// get the ID from the URL
+	errorID, err := app.readIDIntParam(r, "errorID")
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// get the error log from the DB
+	errorLog, err := app.models.ErrorLogs.GetScraperErrorLogByID(int32(errorID))
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrLogNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// create a struct to hold the incoming data
+	var input struct {
+		AdminNotified   bool    `json:"admin_notified"`
+		Resolved        bool    `json:"resolved"`
+		ResolutionNotes *string `json:"resolution_notes"`
+	}
+	// read the incoming data
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// Check if the input fields are empty and if they are, we set them to the current values
+	if input.ResolutionNotes != nil {
+		errorLog.ResolutionNotes = *input.ResolutionNotes
+	}
+	errorLog.AdminNotified = input.AdminNotified
+	errorLog.Resolved = input.Resolved
+	// validate the data
+	v := validator.New()
+	if data.ValidateScraperErrorLog(v, errorLog); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// update the error log
+	err = app.models.ErrorLogs.UpdateScraperErrorLogByID(errorLog)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// return a status OK and the updated error log
+	err = app.writeJSON(w, http.StatusOK, envelope{"error_log": errorLog}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
+// adminGetScraperErrorLogByID() is the endpoint handler responsible for returning a single
+// scraper error log by its ID. This is useful for the admin to see the details of a specific
+// error log.
+func (app *application) adminDeleteScraperErrorLogByID(w http.ResponseWriter, r *http.Request) {
+	// get our UUID from the URL
+	errorID, err := app.readIDIntParam(r, "errorID")
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// delete the error log
+	id, err := app.models.ErrorLogs.DeleteScraperErrorLogByID(int32(errorID))
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrLogNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// write the data back with a message on success
+	message := fmt.Sprintf("error log with ID %d deleted successfully", id)
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": message}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
 // adminGetAllSubscriptionsHandler() is the endpoint handler responsible for returning all the
 // available subscriptions in the DB. It supports pagination and sorting.
 func (app *application) adminGetAllSubscriptionsHandler(w http.ResponseWriter, r *http.Request) {
