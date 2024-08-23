@@ -55,7 +55,7 @@ func (app *application) createAuthenticationApiKeyHandler(w http.ResponseWriter,
 	}
 	// Otherwise, if the password is correct, we generate a new api_key with a 72-hour
 	// expiry time and the scope 'authentication', saving it to the DB
-	api_key, err := app.models.ApiKey.New(user.ID, 24*time.Hour, data.ScopeAuthentication, data.APIKeyLength)
+	api_key, err := app.models.ApiKey.New(user.ID, 72*time.Hour, data.ScopeAuthentication, data.APIKeyLength)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
