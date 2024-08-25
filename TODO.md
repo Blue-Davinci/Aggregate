@@ -13,5 +13,5 @@ This document outlines the tasks and features that are planned or need to be imp
                 - ~~Add Manual token request incase signup aut0-sending initially fails.~~
                 -~~ Add User Account + Settings `endpoints`~~
                 ~~- Permission Support: almost done~~
-                - Admin Endpoints: in the works
+                - Admin Endpoints: in progress
 - ~~**Impliment A Payment Gateway:** Add a stripe paywall for no of feeds a user can add, set as hidden, follow?~~

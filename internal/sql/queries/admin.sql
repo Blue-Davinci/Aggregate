@@ -193,3 +193,24 @@ DELETE FROM permissions
 WHERE id = $1
 RETURNING id, code;
 
+
+-- name: AdminCreateNewAnnouncment :one
+INSERT INTO announcements (title, message, expires_at, created_by, is_active, urgency)
+VALUES
+  ($1, $2, $3, $4, $5, $6)
+  RETURNING *;
+
+-- name: AdminGetAllAnnouncments :many
+SELECT count(*) OVER() as total_records,
+    id,
+    title,
+    message,
+    created_at,
+    expires_at,
+    updated_at,
+    created_by,
+    is_active,
+    urgency
+FROM 
+    announcements
+LIMIT $1 OFFSET $2;

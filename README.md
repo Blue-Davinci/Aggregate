@@ -54,7 +54,12 @@ Some of the features include:
 1. **Administration\Admin endpoints:**
    - Provides Endpoints to facilitate admin activities and management. Allows only users with Admin permissions to perform operations such as:
         - User management: view all users and their activities
-        - Subscription Management: add\hide\update plans, subscriptions and subscribed users.
+        - Subscription Management: add\hide\update plans, subscriptions and subscribed users. View in depth statistics such as churn rates, retention rates, new vs old subscribers, total revenues etc which are represented in the frontend using graphs.
+        - Payment Plan Management: Manage your available plans. Create new ones, Update existing ones and hide others that you feel might not be upto your taste anymore.
+        - Permission Management: add\remove\update and get all available permissions that you can provide to users. The endpoints can double up as an automatic promotion for users due to its partial update capabilities. The frontend allows the use of admins and moderator members.
+        - Statistics : A general endpoint showing general API statistics, such as number of users, revenues etc. This can be combined with the healtcheck and debug/vars endpoint as is done in the frontend to provide in-depth and intuitive statistics for all admins
+        - Errors: Current error support allows admins to monitor the scraper section of the API. Including seeing the errors, problematic feed URLs, brief statistics, delete errors and mark others as resolved.
+        - Announcements: Allows admins to add announcements that can be displayed and viewed by all users. Set expiry dates and their active statuses to manage them.
     **More capabilities are in the pipeline including feed and post management as well as Moderation**
 2. **Permissions:**
    - Admins can set and manage types of permissions as well as individual permissions.
@@ -99,9 +104,9 @@ Some of the features include:
     - The API provides provision for users to integrate various links and **EMAIL** templates to their own frontend locations. Whether it's password reset links to Payment redirections to Activation links etc, users can customize and integrate their frontend endpoints with this API.
 
 **In The Works:**
-- **Admin Endpoints :** New Endpoints for management including content managers
+- For more of what is currently being worked on, please Visit the [Todo](./TODO.md)
 
-**NB: The above are in no way the full list of features, for that please visit the link provided above.**
+**NB: For a full list of all the capabilities and expressed better in a frontend, please VISIT the aggregate frontend, linked above this page.**
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
 

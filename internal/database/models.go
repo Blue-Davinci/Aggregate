@@ -11,6 +11,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type Announcement struct {
+	ID        int32
+	Title     string
+	Message   string
+	CreatedAt sql.NullTime
+	ExpiresAt sql.NullTime
+	UpdatedAt sql.NullTime
+	CreatedBy int64
+	IsActive  sql.NullBool
+	Urgency   string
+}
+
+type AnnouncementRead struct {
+	ID             int32
+	UserID         int64
+	AnnouncementID sql.NullInt32
+	ReadAt         time.Time
+}
+
 type ApiKey struct {
 	ApiKey []byte
 	UserID int64

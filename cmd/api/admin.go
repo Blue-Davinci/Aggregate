@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/blue-davinci/aggregate/internal/data"
 	"github.com/blue-davinci/aggregate/internal/validator"
@@ -637,6 +638,92 @@ func (app *application) adminDeletePermissionHandler(w http.ResponseWriter, r *h
 	}
 	// write the data back with a message on success
 	err = app.writeJSON(w, http.StatusOK, envelope{"message": "permission deleted successfully"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// adminCreateNewAnnouncementHanlder() is the admin endpoint that allows the admin to create
+// a new announcement for the users. It expects a JSON request containing the announcement
+// details.
+func (app *application) adminCreateNewAnnouncementHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title     string    `json:"title"`
+		Message   string    `json:"message"`
+		ExpiresAt time.Time `json:"expires_at"`
+		IsActive  bool      `json:"is_active"`
+		Urgency   string    `json:"urgency"`
+	}
+	// 	CreatedBy will be filled in by the userID of this context
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// create the announcement
+	announcement := &data.Announcement{
+		Title:     input.Title,
+		Message:   input.Message,
+		CreatedBy: app.contextGetUser(r).ID,
+		ExpiresAt: input.ExpiresAt,
+		IsActive:  input.IsActive,
+		Urgency:   input.Urgency,
+	}
+	// validate the data
+	v := validator.New()
+	if data.ValidateAnnouncement(v, announcement); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// app.logger.PrintInfo(fmt.Sprintf("announcement: %+v", announcement), nil)
+	// insert our data
+	err = app.models.Announcements.AdminCreateNewAnnouncement(announcement)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// write the data back
+	err = app.writeJSON(w, http.StatusCreated, envelope{"announcement": announcement}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// adminGetAllAnnouncmentsHandler() is the admin endpoint that returns all the announcements
+// for the admin. This route supports pagination and sorting.
+func (app *application) adminGetAllAnnouncmentsHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		data.Filters
+	}
+	//validate if queries are provided
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	//get the pagesizes as ints and set to the embedded struct
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	// get the sort values falling back to "id" if it is not provided
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	// Add the supported sort values for this endpoint to the sort safelist.
+	input.Filters.SortSafelist = []string{"id", "-id"}
+	// Perform validation
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// get the announcements
+	announcements, metadata, err := app.models.Announcements.AdminGetAllAnnouncments(input.Filters)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrAnnouncementNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// write the data and metadata
+	err = app.writeJSON(w, http.StatusOK, envelope{"announcements": announcements, "metadata": metadata}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

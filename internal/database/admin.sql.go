@@ -14,6 +14,46 @@ import (
 	"github.com/lib/pq"
 )
 
+const adminCreateNewAnnouncment = `-- name: AdminCreateNewAnnouncment :one
+INSERT INTO announcements (title, message, expires_at, created_by, is_active, urgency)
+VALUES
+  ($1, $2, $3, $4, $5, $6)
+  RETURNING id, title, message, created_at, expires_at, updated_at, created_by, is_active, urgency
+`
+
+type AdminCreateNewAnnouncmentParams struct {
+	Title     string
+	Message   string
+	ExpiresAt sql.NullTime
+	CreatedBy int64
+	IsActive  sql.NullBool
+	Urgency   string
+}
+
+func (q *Queries) AdminCreateNewAnnouncment(ctx context.Context, arg AdminCreateNewAnnouncmentParams) (Announcement, error) {
+	row := q.db.QueryRowContext(ctx, adminCreateNewAnnouncment,
+		arg.Title,
+		arg.Message,
+		arg.ExpiresAt,
+		arg.CreatedBy,
+		arg.IsActive,
+		arg.Urgency,
+	)
+	var i Announcement
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Message,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UpdatedAt,
+		&i.CreatedBy,
+		&i.IsActive,
+		&i.Urgency,
+	)
+	return i, err
+}
+
 const adminCreateNewPermission = `-- name: AdminCreateNewPermission :one
 INSERT INTO permissions (code)
 VALUES ($1)
@@ -84,6 +124,74 @@ func (q *Queries) AdminDeletePermission(ctx context.Context, id int64) (Permissi
 	var i Permission
 	err := row.Scan(&i.ID, &i.Code)
 	return i, err
+}
+
+const adminGetAllAnnouncments = `-- name: AdminGetAllAnnouncments :many
+SELECT count(*) OVER() as total_records,
+    id,
+    title,
+    message,
+    created_at,
+    expires_at,
+    updated_at,
+    created_by,
+    is_active,
+    urgency
+FROM 
+    announcements
+LIMIT $1 OFFSET $2
+`
+
+type AdminGetAllAnnouncmentsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type AdminGetAllAnnouncmentsRow struct {
+	TotalRecords int64
+	ID           int32
+	Title        string
+	Message      string
+	CreatedAt    sql.NullTime
+	ExpiresAt    sql.NullTime
+	UpdatedAt    sql.NullTime
+	CreatedBy    int64
+	IsActive     sql.NullBool
+	Urgency      string
+}
+
+func (q *Queries) AdminGetAllAnnouncments(ctx context.Context, arg AdminGetAllAnnouncmentsParams) ([]AdminGetAllAnnouncmentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetAllAnnouncments, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetAllAnnouncmentsRow
+	for rows.Next() {
+		var i AdminGetAllAnnouncmentsRow
+		if err := rows.Scan(
+			&i.TotalRecords,
+			&i.ID,
+			&i.Title,
+			&i.Message,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.UpdatedAt,
+			&i.CreatedBy,
+			&i.IsActive,
+			&i.Urgency,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const adminGetAllPaymentPlans = `-- name: AdminGetAllPaymentPlans :many

@@ -39,6 +39,8 @@ func (app *application) routes() http.Handler {
 	v1Router.With(dynamicMiddleware.Then).Mount("/", app.generalRoutes())
 	// Mounts admin routes
 	v1Router.With(dynamicMiddleware.Then, adminPermissionMiddleware.Then).Mount("/admin", app.adminRoutes())
+	// Mounts announcement routes
+	v1Router.With(dynamicMiddleware.Then).Mount("/announcements", app.announcementRoutes())
 	// The top routes will also need to be seperated when we add more, currently
 	// top feeds is there and will be available to anyone.
 	v1Router.Mount("/top", app.statisticRoutes())
@@ -81,6 +83,13 @@ func (app *application) userRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	// update user info. This will be a dynamically protected route.
 	userRoutes.With(dynamicMiddleware.Then).Patch("/", app.updateUserInformationHandler)
 	return userRoutes
+}
+
+func (app *application) announcementRoutes() chi.Router {
+	announcementRoutes := chi.NewRouter()
+	announcementRoutes.Get("/", app.GetAnnouncmentsForUser)
+	announcementRoutes.Post("/", app.MarkAnnouncmentAsReadByUser)
+	return announcementRoutes
 }
 
 // feedRoutes() provides a router for the /feeds API endpoint.
@@ -172,6 +181,9 @@ func (app *application) subscriptionRoutes(dynamicMiddleware *alice.Chain) chi.R
 // It is responsible for the API's general administration
 func (app *application) adminRoutes() chi.Router {
 	adminRoutes := chi.NewRouter()
+	// announcements
+	adminRoutes.Post("/announcements", app.adminCreateNewAnnouncementHandler)
+	adminRoutes.Get("/announcements", app.adminGetAllAnnouncmentsHandler)
 	// users
 	adminRoutes.Get("/users", app.adminGetAllUsersHandler)
 	// permissions

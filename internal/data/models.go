@@ -26,6 +26,7 @@ type Models struct {
 	Permissions   PermissionModel
 	Admin         AdminModel
 	ErrorLogs     ErrorLogsDataModel
+	Announcements AnnouncementModel
 	//feed models
 }
 
@@ -44,5 +45,6 @@ func NewModels(db *database.Queries) Models {
 		Permissions:   PermissionModel{DB: db},
 		Admin:         AdminModel{DB: db},
 		ErrorLogs:     ErrorLogsDataModel{DB: db},
+		Announcements: AnnouncementModel{DB: db},
 	}
 }

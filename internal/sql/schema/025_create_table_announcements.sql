@@ -7,7 +7,8 @@ CREATE TABLE announcements (
     expires_at TIMESTAMP(0) WITH time zone DEFAULT NULL,
     updated_at TIMESTAMP(0) WITH time zone DEFAULT NOW(),
     created_by BIGSERIAL NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    urgency TEXT NOT NULL CHECK (urgency IN ('low', 'medium', 'high'))
 );
 
 -- +goose Down
