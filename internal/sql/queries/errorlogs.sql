@@ -39,7 +39,7 @@ FROM
 JOIN 
     feeds f ON sel.feed_id = f.id
 ORDER BY 
-    sel.occurred_at DESC
+    sel.occurrence_count DESC
 LIMIT $1 OFFSET $2;
 
 -- name: UpdateScraperErrorLog :one

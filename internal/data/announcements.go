@@ -128,6 +128,27 @@ func (m AnnouncementModel) AdminGetAllAnnouncments(filters Filters) ([]*Announce
 	return announcements, metadata, nil
 }
 
+// AdminDeleteAnnouncmentByID() method deletes an announcement by its ID. It takes in an
+// announcement ID and returns the announcement ID and an error if there was an issue with
+// the database query.
+func (m AnnouncementModel) AdminDeleteAnnouncmentByID(announcementID int32) (int32, error) {
+	// create our context
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// delete our data
+	deletedID, err := m.DB.AdminDeleteAnnouncmentByID(ctx, announcementID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return 0, ErrAnnouncementNotFound
+		default:
+			return 0, err
+		}
+	}
+	return deletedID, nil
+}
+
 // GetAnnouncmentsForUser() method gets all the announcements for a user. It takes in a
 // user ID and returns a slice of announcements and an error if there was an issue with the
 // database query.

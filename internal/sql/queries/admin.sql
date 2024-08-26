@@ -29,7 +29,8 @@ LIMIT $2 OFFSET $3;
 
 -- name: AdminGetAllPaymentPlans :many
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status,version
-FROM payment_plans;
+FROM payment_plans
+ORDER BY status ASC, price;
 
 -- name: AdminGetAllSubscriptions :many
 SELECT 
@@ -213,4 +214,11 @@ SELECT count(*) OVER() as total_records,
     urgency
 FROM 
     announcements
+ORDER BY
+    created_at DESC
 LIMIT $1 OFFSET $2;
+
+-- name: AdminDeleteAnnouncmentByID :one
+DELETE FROM announcements
+WHERE id = $1
+RETURNING id;

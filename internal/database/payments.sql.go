@@ -465,6 +465,7 @@ const getPaymentPlans = `-- name: GetPaymentPlans :many
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status
 FROM payment_plans
 WHERE status = 'active'
+ORDER BY price
 `
 
 type GetPaymentPlansRow struct {

@@ -113,6 +113,18 @@ func (q *Queries) AdminCreatePaymentPlan(ctx context.Context, arg AdminCreatePay
 	return i, err
 }
 
+const adminDeleteAnnouncmentByID = `-- name: AdminDeleteAnnouncmentByID :one
+DELETE FROM announcements
+WHERE id = $1
+RETURNING id
+`
+
+func (q *Queries) AdminDeleteAnnouncmentByID(ctx context.Context, id int32) (int32, error) {
+	row := q.db.QueryRowContext(ctx, adminDeleteAnnouncmentByID, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
 const adminDeletePermission = `-- name: AdminDeletePermission :one
 DELETE FROM permissions
 WHERE id = $1
@@ -139,6 +151,8 @@ SELECT count(*) OVER() as total_records,
     urgency
 FROM 
     announcements
+ORDER BY
+    created_at DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -197,6 +211,7 @@ func (q *Queries) AdminGetAllAnnouncments(ctx context.Context, arg AdminGetAllAn
 const adminGetAllPaymentPlans = `-- name: AdminGetAllPaymentPlans :many
 SELECT id, name, image, description, duration, price, features, created_at, updated_at, status,version
 FROM payment_plans
+ORDER BY status ASC, price
 `
 
 func (q *Queries) AdminGetAllPaymentPlans(ctx context.Context) ([]PaymentPlan, error) {

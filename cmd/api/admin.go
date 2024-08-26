@@ -689,6 +689,34 @@ func (app *application) adminCreateNewAnnouncementHandler(w http.ResponseWriter,
 	}
 }
 
+// AdminDeleteAnnouncmentByIDHandler() is the admin endpoint that allows the admin to delete
+// an announcement by its ID. It expects a URL parameter with the announcement ID.
+func (app *application) adminDeleteAnnouncmentByIDHandler(w http.ResponseWriter, r *http.Request) {
+	// get announcement ID from URL
+	announcementID, err := app.readIDIntParam(r, "announcementID")
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// delete the announcement
+	deletedID, err := app.models.Announcements.AdminDeleteAnnouncmentByID(int32(announcementID))
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrAnnouncementNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// write the data back with a message on success
+	message := fmt.Sprintf("announcement with ID %d deleted successfully", deletedID)
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": message}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // adminGetAllAnnouncmentsHandler() is the admin endpoint that returns all the announcements
 // for the admin. This route supports pagination and sorting.
 func (app *application) adminGetAllAnnouncmentsHandler(w http.ResponseWriter, r *http.Request) {
