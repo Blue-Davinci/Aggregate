@@ -186,6 +186,7 @@ goose postgres postgres://aggregate:password@localhost/aggregate  up
   make help
   Usage: 
   run/api            -  run the api application
+  db/psql            -  connect to the db using psql
   build/api          -  build the cmd/api application
   audit              -  tidy dependencies and format, vet and test all code
   db/migrations/up   -  run the up migrations using confirm as prerequisite
@@ -259,10 +260,10 @@ A succesful run will output something like this:
 make run/api
 'Running cmd/api...'
 go run ./cmd/api
-{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"Loading Environment Variables","properties":{"DSN":"cmd\\api\\.env"}}
-{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"database connection pool established"}
-{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"Starting RSS Feed Scraper","properties":{"Client Timeout":"15","Interval":"40s","No of Go Routines":"5","No of Retries":"3"}}
-{"level":"INFO","time":"2024-07-04T15:56:16Z","message":"starting server","properties":{"addr":":4000","env":"development"}}
+{"level":"INFO","time":"2024-08-26T16:10:34Z","message":"Loading Environment Variables","properties":{"DSN":"cmd\\api\\.env"}}
+{"level":"INFO","time":"2024-08-26T16:10:34Z","message":"database connection pool established"}
+{"level":"INFO","time":"2024-00-26T16:00:34Z","message":"Starting RSS Feed Scraper","properties":{"Client Timeout":"15","Interval":"40s","No of Go Routines":"5","No of Retries":"3"}}
+{"level":"INFO","time":"2024-00-26T16:00:34Z","message":"Starting autosubscription jobs...","properties":{"Interval":"720"}}
 ```
 
 <hr />
