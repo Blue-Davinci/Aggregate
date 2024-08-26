@@ -2,6 +2,7 @@
 help:
 	@echo Usage: 
 	@echo run/api            -  run the api application
+	@echo db/psql            -  connect to the db using psql
 	@echo build/api          -  build the cmd/api application
 	@echo audit              -  tidy dependencies and format, vet and test all code
 	@echo db/migrations/up   -  run the up migrations using confirm as prerequisite
@@ -12,6 +13,11 @@ help:
 run/api:
 	@echo 'Running cmd/api...'
 	go run ./cmd/api
+
+# db/psql: connect to the db using psql
+.PHONY: db/psql
+db/psql:
+	psql ${AGGREGATE_DB_DSN}
 
 # db/migrations/up: run the up migrations using confirm from confirm.p1 as prereq
 .PHONY: db/migrations/up
