@@ -98,6 +98,8 @@ type Feed struct {
 	FeedType        string
 	FeedDescription string
 	IsHidden        bool
+	ApprovalStatus  string
+	Priority        string
 }
 
 type FeedFollow struct {
@@ -106,6 +108,14 @@ type FeedFollow struct {
 	UpdatedAt time.Time
 	UserID    int64
 	FeedID    uuid.UUID
+}
+
+type FeedRejection struct {
+	ID         int64
+	FeedID     uuid.NullUUID
+	RejectedAt time.Time
+	RejectedBy sql.NullInt64
+	Reason     string
 }
 
 type Notification struct {

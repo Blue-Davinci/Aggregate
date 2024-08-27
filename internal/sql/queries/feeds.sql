@@ -27,6 +27,7 @@ FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
 AND feed_type = $2 OR $2 = ''
 AND is_hidden = FALSE
+AND approval_status='approved'
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4;
 
@@ -42,6 +43,7 @@ AND user_id = $2;
 
 -- name: GetNextFeedsToFetch :many
 SELECT * FROM feeds
+WHERE approval_status = 'approved'
 ORDER BY last_fetched_at ASC NULLS FIRST
 LIMIT $1;
 
@@ -96,6 +98,7 @@ LEFT JOIN (
 WHERE 
     (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
     AND (f.is_hidden = false OR f.user_id = $1)
+    AND f.approval_status = 'approved'
     AND (f.feed_type = $5 OR $5 = '')
 ORDER BY 
     f.created_at DESC
@@ -137,6 +140,7 @@ SELECT
     f.feed_type, 
     f.feed_description, 
     f.is_hidden,
+    f.approval_status,
     COALESCE(ff.follow_count, 0) AS follow_count,
     COUNT(*) OVER() AS total_count
 FROM 
@@ -225,6 +229,8 @@ feed_creation_counts AS (
         COUNT(f.id) AS total_created_feeds
     FROM
         feeds f
+    WHERE 
+        f.approval_status = 'approved'
     GROUP BY
         f.user_id
 ),

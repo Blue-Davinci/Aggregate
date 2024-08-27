@@ -16,7 +16,7 @@ import (
 const createFeed = `-- name: CreateFeed :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description, is_hidden) 
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden
+RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden, approval_status, priority
 `
 
 type CreateFeedParams struct {
@@ -59,6 +59,8 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		&i.FeedType,
 		&i.FeedDescription,
 		&i.IsHidden,
+		&i.ApprovalStatus,
+		&i.Priority,
 	)
 	return i, err
 }
@@ -118,6 +120,7 @@ FROM feeds
 WHERE ($1 = '' OR to_tsvector('simple', name) @@ plainto_tsquery('simple', $1))
 AND feed_type = $2 OR $2 = ''
 AND is_hidden = FALSE
+AND approval_status='approved'
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4
 `
@@ -217,6 +220,7 @@ LEFT JOIN (
 WHERE 
     (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
     AND (f.is_hidden = false OR f.user_id = $1)
+    AND f.approval_status = 'approved'
     AND (f.feed_type = $5 OR $5 = '')
 ORDER BY 
     f.created_at DESC
@@ -440,6 +444,7 @@ SELECT
     f.feed_type, 
     f.feed_description, 
     f.is_hidden,
+    f.approval_status,
     COALESCE(ff.follow_count, 0) AS follow_count,
     COUNT(*) OVER() AS total_count
 FROM 
@@ -481,6 +486,7 @@ type GetFeedsCreatedByUserRow struct {
 	FeedType        string
 	FeedDescription string
 	IsHidden        bool
+	ApprovalStatus  string
 	FollowCount     int64
 	TotalCount      int64
 }
@@ -512,6 +518,7 @@ func (q *Queries) GetFeedsCreatedByUser(ctx context.Context, arg GetFeedsCreated
 			&i.FeedType,
 			&i.FeedDescription,
 			&i.IsHidden,
+			&i.ApprovalStatus,
 			&i.FollowCount,
 			&i.TotalCount,
 		); err != nil {
@@ -606,7 +613,8 @@ func (q *Queries) GetListOfFollowedFeeds(ctx context.Context, arg GetListOfFollo
 }
 
 const getNextFeedsToFetch = `-- name: GetNextFeedsToFetch :many
-SELECT id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden FROM feeds
+SELECT id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden, approval_status, priority FROM feeds
+WHERE approval_status = 'approved'
 ORDER BY last_fetched_at ASC NULLS FIRST
 LIMIT $1
 `
@@ -633,6 +641,8 @@ func (q *Queries) GetNextFeedsToFetch(ctx context.Context, limit int32) ([]Feed,
 			&i.FeedType,
 			&i.FeedDescription,
 			&i.IsHidden,
+			&i.ApprovalStatus,
+			&i.Priority,
 		); err != nil {
 			return nil, err
 		}
@@ -697,6 +707,8 @@ feed_creation_counts AS (
         COUNT(f.id) AS total_created_feeds
     FROM
         feeds f
+    WHERE 
+        f.approval_status = 'approved'
     GROUP BY
         f.user_id
 ),
@@ -781,7 +793,7 @@ func (q *Queries) GetTopFeedCreators(ctx context.Context, arg GetTopFeedCreators
 }
 
 const getTopFollowedFeeds = `-- name: GetTopFollowedFeeds :many
-SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.version, f.user_id, f.img_url, f.last_fetched_at, f.feed_type, f.feed_description, f.is_hidden, ff.follow_count
+SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.version, f.user_id, f.img_url, f.last_fetched_at, f.feed_type, f.feed_description, f.is_hidden, f.approval_status, f.priority, ff.follow_count
 FROM (
     SELECT feed_id, COUNT(*) AS follow_count
     FROM feed_follows
@@ -806,6 +818,8 @@ type GetTopFollowedFeedsRow struct {
 	FeedType        string
 	FeedDescription string
 	IsHidden        bool
+	ApprovalStatus  string
+	Priority        string
 	FollowCount     int64
 }
 
@@ -831,6 +845,8 @@ func (q *Queries) GetTopFollowedFeeds(ctx context.Context, limit int32) ([]GetTo
 			&i.FeedType,
 			&i.FeedDescription,
 			&i.IsHidden,
+			&i.ApprovalStatus,
+			&i.Priority,
 			&i.FollowCount,
 		); err != nil {
 			return nil, err
@@ -850,7 +866,7 @@ const markFeedAsFetched = `-- name: MarkFeedAsFetched :one
 UPDATE feeds
 SET last_fetched_at = NOW(), updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden
+RETURNING id, created_at, updated_at, name, url, version, user_id, img_url, last_fetched_at, feed_type, feed_description, is_hidden, approval_status, priority
 `
 
 func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, error) {
@@ -869,6 +885,8 @@ func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, er
 		&i.FeedType,
 		&i.FeedDescription,
 		&i.IsHidden,
+		&i.ApprovalStatus,
+		&i.Priority,
 	)
 	return i, err
 }
