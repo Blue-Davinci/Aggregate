@@ -187,6 +187,8 @@ func (app *application) adminRoutes() chi.Router {
 	adminRoutes.Delete("/announcements/{announcementID}", app.adminDeleteAnnouncmentByIDHandler)
 	// users
 	adminRoutes.Get("/users", app.adminGetAllUsersHandler)
+	// feeds
+	adminRoutes.Get("/feeds/approvals", app.adminGetFeedsPendingApprovalHandler)
 	// permissions
 	adminRoutes.Get("/permissions", app.adminGetAllPermissionsHandler)
 	adminRoutes.Post("/permissions", app.adminCreateNewPermissionHandler)

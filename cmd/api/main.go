@@ -18,6 +18,7 @@ import (
 	"github.com/blue-davinci/aggregate/internal/vcs"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/robfig/cron/v3"
 )
 
@@ -27,9 +28,10 @@ var (
 )
 
 type config struct {
-	port int
-	env  string
-	db   struct {
+	port      int
+	env       string
+	sanitizer *bluemonday.Policy
+	db        struct {
 		dsn          string
 		maxOpenConns int
 		maxIdleConns int
@@ -158,6 +160,8 @@ func main() {
 	// initialize our cron jobs
 	cfg.paystack.cronJob = cron.New()
 	cfg.notifier.cronJob = cron.New()
+	// Initialize our sanitizer
+	cfg.sanitizer = bluemonday.UGCPolicy()
 	// If the version flag value is true, then print out the version number and
 	// immediately exit.
 	if *displayVersion {

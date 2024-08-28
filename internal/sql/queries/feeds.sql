@@ -142,7 +142,11 @@ SELECT
     f.is_hidden,
     f.approval_status,
     COALESCE(ff.follow_count, 0) AS follow_count,
-    COUNT(*) OVER() AS total_count
+    COUNT(*) OVER() AS total_count,
+    fr.rejected_by,                  -- Add the rejector's username
+    fr.reason AS rejection_reason,   -- Add the rejection reason
+    fr.rejected_at,                  -- Add the rejection timestamp
+    u.name AS rejected_by_username   -- Add the rejector's username        
 FROM 
     feeds f
 LEFT JOIN (
@@ -154,12 +158,21 @@ LEFT JOIN (
     GROUP BY 
         feed_id
 ) ff ON f.id = ff.feed_id
+LEFT JOIN 
+    feed_rejections fr ON f.id = fr.feed_id AND f.approval_status = 'rejected' -- Join on feed_rejections with approval_status check
+LEFT JOIN 
+    users u ON fr.rejected_by = u.id  -- Join with users to get the rejector's username
 WHERE 
     f.user_id = $1
     AND (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
-ORDER BY 
+ORDER BY
+    CASE 
+        WHEN f.approval_status = 'pending' THEN 1
+        ELSE 2
+    END,
     f.created_at DESC
 LIMIT $3 OFFSET $4;
+
 
 -- name: GetFeedUserAndStatisticsByID :one
 SELECT
@@ -266,3 +279,43 @@ LEFT JOIN
 ORDER BY
     ffc.total_follows DESC
 LIMIT $1 OFFSET $2;
+
+
+
+-----------------------------------------------------------------------------
+-- ADMIN
+-----------------------------------------------------------------------------
+
+-- name: AdminGetFeedsPendingApproval :many
+SELECT 
+    count(*) OVER() AS total_count,
+    feeds.id, 
+    feeds.created_at, 
+    feeds.updated_at, 
+    feeds.name, 
+    feeds.url, 
+    feeds.user_id, 
+    feeds.version, 
+    feeds.img_url, 
+    feeds.feed_type, 
+    feeds.feed_description, 
+    feeds.is_hidden, 
+    feeds.approval_status, 
+    feeds.priority,
+    users.id AS user_id,
+    users.name AS user_name,
+    users.user_img AS user_img
+FROM 
+    feeds
+JOIN 
+    users 
+ON 
+    feeds.user_id = users.id
+WHERE 
+    ($1 = '' OR to_tsvector('simple', feeds.name) @@ plainto_tsquery('simple', $1))
+    AND (feeds.feed_type = $2 OR $2 = '')
+    AND feeds.approval_status = 'pending'
+ORDER BY 
+    feeds.created_at DESC
+LIMIT 
+    $3 OFFSET $4;

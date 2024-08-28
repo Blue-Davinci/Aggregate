@@ -60,8 +60,20 @@ type FeedsWithFollows struct {
 // and will be used to return the feeds created by a user and the number
 // of followers each feed has.
 type FeedsCreatedByUser struct {
-	Feed         Feed  `json:"feed"`
-	Follow_Count int64 `json:"follow_count"`
+	Feed            Feed         `json:"feed"`
+	Follow_Count    int64        `json:"follow_count"`
+	Approval_Status string       `json:"approval_status"`
+	RejectedFeed    RejectedFeed `json:"rejected_feed"`
+}
+
+// A rejected feed holds info on what and how a feed was rejected and by whom
+type RejectedFeed struct {
+	ID                 int64     `json:"id"`
+	FeedID             uuid.UUID `json:"feed_id"`
+	RejectedAt         time.Time `json:"rejected_at"`
+	RejectedBy         int64     `json:"rejected_by"`
+	RejectedByUserName string    `json:"rejected_by_user_name"`
+	Reason             string    `json:"reason"`
 }
 
 // This struct will be used when returning detailed information fo a specific
@@ -398,7 +410,14 @@ func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters F
 		feed.Is_Hidden = row.IsHidden
 		// combine the data
 		createdFeed.Feed = feed
+		createdFeed.RejectedFeed = RejectedFeed{
+			RejectedAt:         row.RejectedAt.Time,
+			RejectedBy:         row.RejectedBy.Int64,
+			RejectedByUserName: row.RejectedByUsername.String,
+			Reason:             row.RejectionReason.String,
+		}
 		createdFeed.Follow_Count = row.FollowCount
+		createdFeed.Approval_Status = row.ApprovalStatus
 
 		feedCreatedByUsers = append(feedCreatedByUsers, &createdFeed)
 	}

@@ -92,6 +92,19 @@ type CommentStatistics struct {
 	Recent_Comments int64 `json:"recent_comments"`
 }
 
+type AdminFeed struct {
+	Feed            Feed          `json:"feed"`
+	AdminFeedUser   AdminFeedUser `json:"feed_user"`
+	Approval_Status string        `json:"approval_status"`
+	Priority        string        `json:"priority"`
+}
+
+type AdminFeedUser struct {
+	UserID   int64  `json:"user_id"`
+	Name     string `json:"name"`
+	User_Img string `json:"user_img"`
+}
+
 // AdminGetAllUsers() returns all available users in the DB. This route supports a full text search for the user Name as well
 func (m AdminModel) AdminGetAllUsers(nameQuery string, filters Filters) ([]*AdminUser, Metadata, error) {
 	// Create a context with a timeout of 3 seconds.
@@ -520,4 +533,51 @@ func (m AdminModel) AdminDeletePermission(permissionID int64) error {
 	}
 	// no issues, we return nil
 	return nil
+}
+
+func (m AdminModel) AdminGetFeedsPendingApproval(name, feed_type string, filters Filters) ([]*AdminFeed, Metadata, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve our data
+	rows, err := m.DB.AdminGetFeedsPendingApproval(ctx, database.AdminGetFeedsPendingApprovalParams{
+		Column1:  name,
+		FeedType: feed_type, // Convert string to sql.NullString
+		Limit:    int32(filters.limit()),
+		Offset:   int32(filters.offset()),
+	})
+	//check for an error
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	totalRecords := 0
+	adminFeeds := []*AdminFeed{}
+	for _, row := range rows {
+		// create a new feed
+		var feed Feed
+		totalRecords = int(row.TotalCount)
+		feed.ID = row.ID
+		feed.CreatedAt = row.CreatedAt
+		feed.UpdatedAt = row.UpdatedAt
+		feed.Name = row.Name
+		feed.Url = row.Url
+		feed.Version = row.Version
+		feed.UserID = row.UserID
+		feed.ImgURL = row.ImgUrl
+		feed.FeedType = row.FeedType
+		feed.FeedDescription = row.FeedDescription
+		feed.Is_Hidden = row.IsHidden
+		// create a new admin feed
+		adminFeed := &AdminFeed{
+			Feed:            feed,
+			AdminFeedUser:   AdminFeedUser{UserID: row.UserID, Name: row.UserName, User_Img: row.UserImg},
+			Approval_Status: row.ApprovalStatus,
+			Priority:        row.Priority,
+		}
+		// append to the list
+		adminFeeds = append(adminFeeds, adminFeed)
+	}
+	// calculate the metadata
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	return adminFeeds, metadata, nil
 }

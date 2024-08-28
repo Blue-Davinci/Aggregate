@@ -504,6 +504,7 @@ func (m RSSFeedDataModel) GetRSSFeeds(retryMax, clientTimeout int, url string) (
 			return RSSFeed{}, err
 		}
 	}
+
 	return rssFeed, nil
 }
 

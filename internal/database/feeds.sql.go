@@ -13,6 +13,118 @@ import (
 	"github.com/google/uuid"
 )
 
+const adminGetFeedsPendingApproval = `-- name: AdminGetFeedsPendingApproval :many
+
+SELECT 
+    count(*) OVER() AS total_count,
+    feeds.id, 
+    feeds.created_at, 
+    feeds.updated_at, 
+    feeds.name, 
+    feeds.url, 
+    feeds.user_id, 
+    feeds.version, 
+    feeds.img_url, 
+    feeds.feed_type, 
+    feeds.feed_description, 
+    feeds.is_hidden, 
+    feeds.approval_status, 
+    feeds.priority,
+    users.id AS user_id,
+    users.name AS user_name,
+    users.user_img AS user_img
+FROM 
+    feeds
+JOIN 
+    users 
+ON 
+    feeds.user_id = users.id
+WHERE 
+    ($1 = '' OR to_tsvector('simple', feeds.name) @@ plainto_tsquery('simple', $1))
+    AND (feeds.feed_type = $2 OR $2 = '')
+    AND feeds.approval_status = 'pending'
+ORDER BY 
+    feeds.created_at DESC
+LIMIT 
+    $3 OFFSET $4
+`
+
+type AdminGetFeedsPendingApprovalParams struct {
+	Column1  interface{}
+	FeedType string
+	Limit    int32
+	Offset   int32
+}
+
+type AdminGetFeedsPendingApprovalRow struct {
+	TotalCount      int64
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Name            string
+	Url             string
+	UserID          int64
+	Version         int32
+	ImgUrl          string
+	FeedType        string
+	FeedDescription string
+	IsHidden        bool
+	ApprovalStatus  string
+	Priority        string
+	UserID_2        int64
+	UserName        string
+	UserImg         string
+}
+
+//---------------------------------------------------------------------------
+// ADMIN
+//---------------------------------------------------------------------------
+func (q *Queries) AdminGetFeedsPendingApproval(ctx context.Context, arg AdminGetFeedsPendingApprovalParams) ([]AdminGetFeedsPendingApprovalRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetFeedsPendingApproval,
+		arg.Column1,
+		arg.FeedType,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetFeedsPendingApprovalRow
+	for rows.Next() {
+		var i AdminGetFeedsPendingApprovalRow
+		if err := rows.Scan(
+			&i.TotalCount,
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.Url,
+			&i.UserID,
+			&i.Version,
+			&i.ImgUrl,
+			&i.FeedType,
+			&i.FeedDescription,
+			&i.IsHidden,
+			&i.ApprovalStatus,
+			&i.Priority,
+			&i.UserID_2,
+			&i.UserName,
+			&i.UserImg,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createFeed = `-- name: CreateFeed :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description, is_hidden) 
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
@@ -446,7 +558,11 @@ SELECT
     f.is_hidden,
     f.approval_status,
     COALESCE(ff.follow_count, 0) AS follow_count,
-    COUNT(*) OVER() AS total_count
+    COUNT(*) OVER() AS total_count,
+    fr.rejected_by,                  -- Add the rejector's username
+    fr.reason AS rejection_reason,   -- Add the rejection reason
+    fr.rejected_at,                  -- Add the rejection timestamp
+    u.name AS rejected_by_username   -- Add the rejector's username        
 FROM 
     feeds f
 LEFT JOIN (
@@ -458,10 +574,18 @@ LEFT JOIN (
     GROUP BY 
         feed_id
 ) ff ON f.id = ff.feed_id
+LEFT JOIN 
+    feed_rejections fr ON f.id = fr.feed_id AND f.approval_status = 'rejected' -- Join on feed_rejections with approval_status check
+LEFT JOIN 
+    users u ON fr.rejected_by = u.id  -- Join with users to get the rejector's username
 WHERE 
     f.user_id = $1
     AND (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
-ORDER BY 
+ORDER BY
+    CASE 
+        WHEN f.approval_status = 'pending' THEN 1
+        ELSE 2
+    END,
     f.created_at DESC
 LIMIT $3 OFFSET $4
 `
@@ -474,21 +598,25 @@ type GetFeedsCreatedByUserParams struct {
 }
 
 type GetFeedsCreatedByUserRow struct {
-	ID              uuid.UUID
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	Name            string
-	Url             string
-	Version         int32
-	UserID          int64
-	ImgUrl          string
-	LastFetchedAt   sql.NullTime
-	FeedType        string
-	FeedDescription string
-	IsHidden        bool
-	ApprovalStatus  string
-	FollowCount     int64
-	TotalCount      int64
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	Name               string
+	Url                string
+	Version            int32
+	UserID             int64
+	ImgUrl             string
+	LastFetchedAt      sql.NullTime
+	FeedType           string
+	FeedDescription    string
+	IsHidden           bool
+	ApprovalStatus     string
+	FollowCount        int64
+	TotalCount         int64
+	RejectedBy         sql.NullInt64
+	RejectionReason    sql.NullString
+	RejectedAt         sql.NullTime
+	RejectedByUsername sql.NullString
 }
 
 func (q *Queries) GetFeedsCreatedByUser(ctx context.Context, arg GetFeedsCreatedByUserParams) ([]GetFeedsCreatedByUserRow, error) {
@@ -521,6 +649,10 @@ func (q *Queries) GetFeedsCreatedByUser(ctx context.Context, arg GetFeedsCreated
 			&i.ApprovalStatus,
 			&i.FollowCount,
 			&i.TotalCount,
+			&i.RejectedBy,
+			&i.RejectionReason,
+			&i.RejectedAt,
+			&i.RejectedByUsername,
 		); err != nil {
 			return nil, err
 		}
