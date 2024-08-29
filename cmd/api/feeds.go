@@ -418,6 +418,8 @@ func (app *application) getFeedsCreatedByUserHandler(w http.ResponseWriter, r *h
 	}
 }
 
+// updateFeedHandler() updates a feed record in the database. This update endpoint
+// supports partial updates so a user can update just specific fields of the feed record.
 func (app *application) updateFeedHandler(w http.ResponseWriter, r *http.Request) {
 	//Read our data as parameters from the URL as it's a HTTP PATCH Request
 	feedID, err := app.readIDParam(r, "feedID")
@@ -438,41 +440,15 @@ func (app *application) updateFeedHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Have an input field that holds the feed data
-	// We use a pointer to the string to differentiate between an empty string and a null value
-	var input struct {
-		Name            *string `json:"name"`
-		Url             *string `json:"url"`
-		ImgURL          *string `json:"img_url"`
-		FeedType        *string `json:"feed_type"`
-		FeedDescription *string `json:"feed_description"`
-		Is_Hidden       bool    `json:"is_hidden"`
-	}
+	// We use a pointer to the types to differentiate between an empty string and a null value
+	var input *data.FeedInput
 	err = app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 	// Check if the input fields are empty and if they are, we set them to the current values
-	if input.Name != nil {
-		feed.Name = *input.Name
-	}
-	// check for the url
-	if input.Url != nil {
-		feed.Url = *input.Url
-	}
-	// check for the img_url
-	if input.ImgURL != nil {
-		feed.ImgURL = *input.ImgURL
-	}
-	// check for the feed_type and set it to lower for a search column
-	if input.FeedType != nil {
-		feed.FeedType = strings.ToLower(*input.FeedType)
-	}
-	// check for the feed_description
-	if input.FeedDescription != nil {
-		feed.FeedDescription = *input.FeedDescription
-	}
-	feed.Is_Hidden = input.Is_Hidden
+	data.UpdateFeedFields(input, feed)
 
 	// Initialize a new Validator.
 	v := validator.New()
@@ -481,7 +457,7 @@ func (app *application) updateFeedHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Call the Update() method on the feedModel to update the feed record in the database.
-	err = app.models.Feeds.UpdateFeed(feed)
+	err = app.models.Feeds.UpdateFeed(app.contextGetUser(r).ID, feed)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrEditConflict):

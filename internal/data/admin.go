@@ -105,6 +105,34 @@ type AdminFeedUser struct {
 	User_Img string `json:"user_img"`
 }
 
+func UpdateAdminFeedFields(input *AdminFeedInput, adminFeed *AdminFeed) {
+	// if name, url, imgurl,feedtype etc
+	if input.Name != nil {
+		adminFeed.Feed.Name = *input.Name
+	}
+	if input.Url != nil {
+		adminFeed.Feed.Url = *input.Url
+	}
+	if input.ImgURL != nil {
+		adminFeed.Feed.ImgURL = *input.ImgURL
+	}
+	if input.FeedType != nil {
+		adminFeed.Feed.FeedType = *input.FeedType
+	}
+	if input.FeedDescription != nil {
+		adminFeed.Feed.FeedDescription = *input.FeedDescription
+	}
+	if input.Is_Hidden != nil {
+		adminFeed.Feed.Is_Hidden = *input.Is_Hidden
+	}
+	if input.ApprovalStatus != nil {
+		adminFeed.Approval_Status = *input.ApprovalStatus
+	}
+	if input.Priority != nil {
+		adminFeed.Priority = *input.Priority
+	}
+}
+
 // AdminGetAllUsers() returns all available users in the DB. This route supports a full text search for the user Name as well
 func (m AdminModel) AdminGetAllUsers(nameQuery string, filters Filters) ([]*AdminUser, Metadata, error) {
 	// Create a context with a timeout of 3 seconds.
@@ -580,4 +608,77 @@ func (m AdminModel) AdminGetFeedsPendingApproval(name, feed_type string, filters
 	// calculate the metadata
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 	return adminFeeds, metadata, nil
+}
+
+func (m AdminModel) AdminGetFeedByID(feedID uuid.UUID) (*AdminFeed, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve the feed
+	row, err := m.DB.GetFeedById(ctx, feedID)
+	// check for an error
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	// create a new feed
+	var feed Feed
+	feed.ID = row.ID
+	feed.CreatedAt = row.CreatedAt
+	feed.UpdatedAt = row.UpdatedAt
+	feed.Name = row.Name
+	feed.Url = row.Url
+	feed.Version = row.Version
+	feed.UserID = row.UserID
+	feed.ImgURL = row.ImgUrl
+	feed.FeedType = row.FeedType
+	feed.FeedDescription = row.FeedDescription
+	feed.Is_Hidden = row.IsHidden
+	// create a new admin feed
+	adminFeed := &AdminFeed{
+		Feed:            feed,
+		AdminFeedUser:   AdminFeedUser{UserID: row.UserID, Name: row.Name, User_Img: row.ImgUrl},
+		Approval_Status: row.ApprovalStatus,
+		Priority:        row.Priority,
+	}
+	// return the feed
+	return adminFeed, nil
+}
+func (m AdminModel) AdminUpdateFeed(adminFeed *AdminFeed) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// update the feed
+	feed := adminFeed.Feed
+	row, err := m.DB.AdminUpdateFeed(ctx, database.AdminUpdateFeedParams{
+		ID:              feed.ID,
+		UserID:          feed.UserID,
+		Name:            feed.Name,
+		Url:             feed.Url,
+		ImgUrl:          feed.ImgURL,
+		FeedType:        feed.FeedType,
+		FeedDescription: feed.FeedDescription,
+		IsHidden:        feed.Is_Hidden,
+		Version:         feed.Version,
+		ApprovalStatus:  adminFeed.Approval_Status,
+		Priority:        adminFeed.Priority,
+	})
+	// check for an error
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+	// update the feed version & updated
+	adminFeed.Feed.Version = row.Version
+	adminFeed.Feed.UpdatedAt = row.UpdatedAt
+	// clean. No error,
+	return nil
 }

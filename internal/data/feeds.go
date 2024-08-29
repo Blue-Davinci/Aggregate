@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/blue-davinci/aggregate/internal/database"
@@ -30,6 +31,28 @@ type FeedModel struct {
 type TopFeeds struct {
 	Feed         Feed  `json:"feed"`
 	Follow_Count int64 `json:"follow_count"`
+}
+
+type FeedInput struct {
+	Name            *string `json:"name"`
+	Url             *string `json:"url"`
+	UserID          *int64  `json:"user_id"`
+	ImgURL          *string `json:"img_url"`
+	FeedType        *string `json:"feed_type"`
+	FeedDescription *string `json:"feed_description"`
+	Is_Hidden       *bool   `json:"is_hidden"`
+}
+
+type AdminFeedInput struct {
+	Name            *string `json:"name"`
+	Url             *string `json:"url"`
+	UserID          *int64  `json:"user_id"`
+	ImgURL          *string `json:"img_url"`
+	FeedType        *string `json:"feed_type"`
+	FeedDescription *string `json:"feed_description"`
+	Is_Hidden       *bool   `json:"is_hidden"`
+	ApprovalStatus  *string `json:"approval_status"`
+	Priority        *string `json:"priority"`
 }
 
 // This struct will represent the Top Creators and contains a User struct
@@ -148,6 +171,29 @@ func ValidateFeedFollow(v *validator.Validator, feedfollow *FeedFollow) {
 	v.Check(isvalid, "feed id", "must be a valid UUID")
 }
 
+// Define a reusable function to update feed fields from the input
+func UpdateFeedFields(input *FeedInput, feed *Feed) {
+	// Check and update each field if it's not nil
+	if input.Name != nil {
+		feed.Name = *input.Name
+	}
+	if input.Url != nil {
+		feed.Url = *input.Url
+	}
+	if input.ImgURL != nil {
+		feed.ImgURL = *input.ImgURL
+	}
+	if input.FeedType != nil {
+		feed.FeedType = strings.ToLower(*input.FeedType)
+	}
+	if input.FeedDescription != nil {
+		feed.FeedDescription = *input.FeedDescription
+	}
+	if input.Is_Hidden != nil {
+		feed.Is_Hidden = *input.Is_Hidden
+	}
+}
+
 func (m FeedModel) GetFeedWithStats(feedID uuid.UUID) (*FeedWithStatsInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -210,13 +256,18 @@ func (m FeedModel) GetFeedByID(feedID uuid.UUID) (*Feed, error) {
 	return &feed, nil
 }
 
-func (m FeedModel) UpdateFeed(feed *Feed) error {
+// The UpdateFeed() method accepts a user ID and a pointer to a Feed struct
+// and updates the feed record in the database. We use the user ID from the context
+// rather than from the feed itself to prevent users from updating feeds that they
+// do not own.
+func (m FeedModel) UpdateFeed(userID int64, feed *Feed) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// update the feed
-	err := m.DB.UpdateFeed(ctx, database.UpdateFeedParams{
+	row, err := m.DB.UpdateFeed(ctx, database.UpdateFeedParams{
 		ID:              feed.ID,
+		UserID:          userID, // use the user ID from the context rather than the feed
 		Name:            feed.Name,
 		Url:             feed.Url,
 		ImgUrl:          feed.ImgURL,
@@ -234,6 +285,9 @@ func (m FeedModel) UpdateFeed(feed *Feed) error {
 			return err
 		}
 	}
+	// update the feed version & updated
+	feed.Version = row.Version
+	feed.UpdatedAt = row.UpdatedAt
 	// clean. No error,
 	return nil
 }

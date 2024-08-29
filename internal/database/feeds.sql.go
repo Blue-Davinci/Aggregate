@@ -125,6 +125,51 @@ func (q *Queries) AdminGetFeedsPendingApproval(ctx context.Context, arg AdminGet
 	return items, nil
 }
 
+const adminUpdateFeed = `-- name: AdminUpdateFeed :one
+UPDATE feeds
+SET updated_at = NOW(), name = $3, url = $4, version = version + 1, img_url = $5, feed_type = $6, feed_description = $7, is_hidden = $8, approval_status = $10, priority = $11
+WHERE id = $1 AND user_id = $2 AND version = $9
+RETURNING updated_at, version
+`
+
+type AdminUpdateFeedParams struct {
+	ID              uuid.UUID
+	UserID          int64
+	Name            string
+	Url             string
+	ImgUrl          string
+	FeedType        string
+	FeedDescription string
+	IsHidden        bool
+	Version         int32
+	ApprovalStatus  string
+	Priority        string
+}
+
+type AdminUpdateFeedRow struct {
+	UpdatedAt time.Time
+	Version   int32
+}
+
+func (q *Queries) AdminUpdateFeed(ctx context.Context, arg AdminUpdateFeedParams) (AdminUpdateFeedRow, error) {
+	row := q.db.QueryRowContext(ctx, adminUpdateFeed,
+		arg.ID,
+		arg.UserID,
+		arg.Name,
+		arg.Url,
+		arg.ImgUrl,
+		arg.FeedType,
+		arg.FeedDescription,
+		arg.IsHidden,
+		arg.Version,
+		arg.ApprovalStatus,
+		arg.Priority,
+	)
+	var i AdminUpdateFeedRow
+	err := row.Scan(&i.UpdatedAt, &i.Version)
+	return i, err
+}
+
 const createFeed = `-- name: CreateFeed :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description, is_hidden) 
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
@@ -411,7 +456,7 @@ func (q *Queries) GetAllFeedsFollowedByUser(ctx context.Context, arg GetAllFeeds
 }
 
 const getFeedById = `-- name: GetFeedById :one
-SELECT id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
+SELECT id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden, approval_status, priority
 FROM feeds
 WHERE id = $1
 `
@@ -428,6 +473,8 @@ type GetFeedByIdRow struct {
 	FeedType        string
 	FeedDescription string
 	IsHidden        bool
+	ApprovalStatus  string
+	Priority        string
 }
 
 func (q *Queries) GetFeedById(ctx context.Context, id uuid.UUID) (GetFeedByIdRow, error) {
@@ -445,6 +492,8 @@ func (q *Queries) GetFeedById(ctx context.Context, id uuid.UUID) (GetFeedByIdRow
 		&i.FeedType,
 		&i.FeedDescription,
 		&i.IsHidden,
+		&i.ApprovalStatus,
+		&i.Priority,
 	)
 	return i, err
 }
@@ -1023,14 +1072,16 @@ func (q *Queries) MarkFeedAsFetched(ctx context.Context, id uuid.UUID) (Feed, er
 	return i, err
 }
 
-const updateFeed = `-- name: UpdateFeed :exec
+const updateFeed = `-- name: UpdateFeed :one
 UPDATE feeds
-SET updated_at = NOW(), name = $2, url = $3, version = version + 1, img_url = $4, feed_type = $5, feed_description = $6, is_hidden = $7
-WHERE id = $1 AND version = $8
+SET updated_at = NOW(), name = $3, url = $4, version = version + 1, img_url = $5, feed_type = $6, feed_description = $7, is_hidden = $8
+WHERE id = $1 AND user_id = $2 AND version = $9
+RETURNING updated_at, version
 `
 
 type UpdateFeedParams struct {
 	ID              uuid.UUID
+	UserID          int64
 	Name            string
 	Url             string
 	ImgUrl          string
@@ -1040,9 +1091,15 @@ type UpdateFeedParams struct {
 	Version         int32
 }
 
-func (q *Queries) UpdateFeed(ctx context.Context, arg UpdateFeedParams) error {
-	_, err := q.db.ExecContext(ctx, updateFeed,
+type UpdateFeedRow struct {
+	UpdatedAt time.Time
+	Version   int32
+}
+
+func (q *Queries) UpdateFeed(ctx context.Context, arg UpdateFeedParams) (UpdateFeedRow, error) {
+	row := q.db.QueryRowContext(ctx, updateFeed,
 		arg.ID,
+		arg.UserID,
 		arg.Name,
 		arg.Url,
 		arg.ImgUrl,
@@ -1051,5 +1108,7 @@ func (q *Queries) UpdateFeed(ctx context.Context, arg UpdateFeedParams) error {
 		arg.IsHidden,
 		arg.Version,
 	)
-	return err
+	var i UpdateFeedRow
+	err := row.Scan(&i.UpdatedAt, &i.Version)
+	return i, err
 }

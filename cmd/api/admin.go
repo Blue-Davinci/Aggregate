@@ -136,8 +136,8 @@ func (app *application) adminUpdateScraperErrorLog(w http.ResponseWriter, r *htt
 	}
 	// create a struct to hold the incoming data
 	var input struct {
-		AdminNotified   bool    `json:"admin_notified"`
-		Resolved        bool    `json:"resolved"`
+		AdminNotified   *bool   `json:"admin_notified"`
+		Resolved        *bool   `json:"resolved"`
 		ResolutionNotes *string `json:"resolution_notes"`
 	}
 	// read the incoming data
@@ -150,8 +150,12 @@ func (app *application) adminUpdateScraperErrorLog(w http.ResponseWriter, r *htt
 	if input.ResolutionNotes != nil {
 		errorLog.ResolutionNotes = *input.ResolutionNotes
 	}
-	errorLog.AdminNotified = input.AdminNotified
-	errorLog.Resolved = input.Resolved
+	if input.AdminNotified != nil {
+		errorLog.AdminNotified = *input.AdminNotified
+	}
+	if input.Resolved != nil {
+		errorLog.Resolved = *input.Resolved
+	}
 	// validate the data
 	v := validator.New()
 	if data.ValidateScraperErrorLog(v, errorLog); !v.Valid() {
@@ -757,6 +761,9 @@ func (app *application) adminGetAllAnnouncmentsHandler(w http.ResponseWriter, r 
 	}
 }
 
+// adminGetFeedsPendingApprovalHandler() is the admin endpoint that returns all the feeds
+// that are pending approval. This route supports a full text search for the feed Name as well
+// as pagination and sorting.
 func (app *application) adminGetFeedsPendingApprovalHandler(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
 	var input struct {
@@ -791,6 +798,65 @@ func (app *application) adminGetFeedsPendingApprovalHandler(w http.ResponseWrite
 	}
 	// write the data and metadata
 	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feeds, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// adminUpdateFeed() is the admin endpoint that is responsible for updating a feed in the DB.
+// for this one, we expect the feed in the body in addition to the USER ID of the user who
+// created the feed. This will allow an admin to update a feed on behalf of a user or rather
+// manage a feed. And since  it supports PARTIAL updates, an admin can also approve a feed
+// by setting the status to "approved" or even  change the PRIORITY of the feed.
+func (app *application) adminUpdateFeed(w http.ResponseWriter, r *http.Request) {
+	feedID, err := app.readIDParam(r, "feedID")
+	//check whether there's an error or the feedID is invalid
+	if err != nil || feedID == uuid.Nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Get our feed.
+	adminFeed, err := app.models.Admin.AdminGetFeedByID(feedID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Have an input field that holds the feed data, Note, we expect a USERID to be passed in
+	// the context of the request
+	var input *data.AdminFeedInput
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// Check if the input fields are empty and if they are, we set them to the current values
+	data.UpdateAdminFeedFields(input, adminFeed)
+	// additional check for the status and priority
+
+	// Initialize a new Validator.
+	v := validator.New()
+	if data.ValidateFeed(v, &adminFeed.Feed); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// For this admin endpoint, we will use the userID of the FEED we obtain from the
+	err = app.models.Admin.AdminUpdateFeed(adminFeed)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Return a 200 OK status code and the updated feed record in the response body
+	err = app.writeJSON(w, http.StatusOK, envelope{"feed": adminFeed}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

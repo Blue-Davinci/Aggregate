@@ -1,12 +1,19 @@
 -- name: GetFeedById :one
-SELECT id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden
+SELECT id, created_at, updated_at, name, url, user_id, version, img_url, feed_type, feed_description, is_hidden, approval_status, priority
 FROM feeds
 WHERE id = $1;
 
--- name: UpdateFeed :exec
+-- name: UpdateFeed :one
 UPDATE feeds
-SET updated_at = NOW(), name = $2, url = $3, version = version + 1, img_url = $4, feed_type = $5, feed_description = $6, is_hidden = $7
-WHERE id = $1 AND version = $8;
+SET updated_at = NOW(), name = $3, url = $4, version = version + 1, img_url = $5, feed_type = $6, feed_description = $7, is_hidden = $8
+WHERE id = $1 AND user_id = $2 AND version = $9
+RETURNING updated_at, version;
+
+-- name: AdminUpdateFeed :one
+UPDATE feeds
+SET updated_at = NOW(), name = $3, url = $4, version = version + 1, img_url = $5, feed_type = $6, feed_description = $7, is_hidden = $8, approval_status = $10, priority = $11
+WHERE id = $1 AND user_id = $2 AND version = $9
+RETURNING updated_at, version;
 
 -- name: GetFeedSearchOptions :many
 SELECT DISTINCT id, name
