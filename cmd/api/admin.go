@@ -761,6 +761,45 @@ func (app *application) adminGetAllAnnouncmentsHandler(w http.ResponseWriter, r 
 	}
 }
 
+func (app *application) AdminGetAllFeedsWithStatistics(w http.ResponseWriter, r *http.Request) {
+	// make a struct to hold what we would want from the queries
+	var input struct {
+		Name      string
+		Feed_Type string
+		data.Filters
+	}
+	//validate if queries are provided
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	// use our helpers to convert the queries
+	input.Name = app.readString(qs, "name", "")
+	input.Feed_Type = app.readString(qs, "feed_type", "")
+	//get the page & pagesizes as ints and set to the embedded struct
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	// get the sort values falling back to "id" if it is not provided
+	input.Filters.Sort = app.readString(qs, "sort", "name")
+	// Add the supported sort values for this endpoint to the sort safelist.
+	input.Filters.SortSafelist = []string{"name", "url", "-name", "-url"}
+	// Perform validation
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// get the feeds
+	feeds, metadata, adminFeedStats, err := app.models.Admin.AdminGetAllFeedsWithStatistics(input.Name, input.Feed_Type, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// write the data and metadata
+	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feeds, "metadata": metadata, "statistics": adminFeedStats}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 // adminGetFeedsPendingApprovalHandler() is the admin endpoint that returns all the feeds
 // that are pending approval. This route supports a full text search for the feed Name as well
 // as pagination and sorting.
@@ -791,13 +830,13 @@ func (app *application) adminGetFeedsPendingApprovalHandler(w http.ResponseWrite
 		return
 	}
 	// get the feeds
-	feeds, metadata, err := app.models.Admin.AdminGetFeedsPendingApproval(input.Name, input.Feed_Type, input.Filters)
+	feeds, metadata, adminPendingFeedStats, err := app.models.Admin.AdminGetFeedsPendingApproval(input.Name, input.Feed_Type, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	// write the data and metadata
-	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feeds, "metadata": metadata}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feeds, "metadata": metadata, "statistics": adminPendingFeedStats}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

@@ -406,13 +406,13 @@ func (app *application) getFeedsCreatedByUserHandler(w http.ResponseWriter, r *h
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	feeds, metadata, err := app.models.Feeds.GetAllFeedsCreatedByUser(app.contextGetUser(r).ID, input.Name, input.Filters)
+	feeds, metadata, creationStats, err := app.models.Feeds.GetAllFeedsCreatedByUser(app.contextGetUser(r).ID, input.Name, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	// Return the feeds in the response body
-	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feeds, "metadata": metadata}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"feeds": feeds, "metadata": metadata, "creation_statistics": creationStats}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

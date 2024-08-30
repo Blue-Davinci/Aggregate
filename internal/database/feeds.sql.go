@@ -13,9 +13,247 @@ import (
 	"github.com/google/uuid"
 )
 
+const adminGetAllFeedsWithStatistics = `-- name: AdminGetAllFeedsWithStatistics :many
+WITH aggregated_stats AS (
+    SELECT 
+        COUNT(*) AS total_feeds,
+        COUNT(*) FILTER (WHERE approval_status = 'pending') AS total_pending_feeds,
+        COUNT(*) FILTER (WHERE approval_status = 'approved') AS total_approved_feeds,
+        COUNT(*) FILTER (WHERE approval_status = 'rejected') AS total_rejected_feeds,
+        COUNT(*) FILTER (WHERE is_hidden = true) AS total_hidden_feeds,
+        -- Subquery to get the most common feed_type
+        (SELECT feed_type
+         FROM feeds
+         GROUP BY feed_type
+         ORDER BY COUNT(*) DESC
+         LIMIT 1) AS most_common_feed_type
+    FROM 
+        feeds
+),
+feeds_with_priority AS (
+    SELECT 
+        priority, 
+        COUNT(*) AS total_by_priority
+    FROM 
+        feeds
+    WHERE 
+        approval_status = 'pending'
+    GROUP BY 
+        priority
+),
+feeds_per_user AS (
+    SELECT 
+        user_id, 
+        COUNT(*) AS pending_feeds_count
+    FROM 
+        feeds
+    WHERE 
+        approval_status = 'pending'
+    GROUP BY 
+        user_id
+),
+feed_follows_count AS (
+    SELECT 
+        feed_id, 
+        COUNT(*) AS follow_count
+    FROM 
+        feed_follows
+    GROUP BY 
+        feed_id
+)
+SELECT 
+    agg_stats.total_feeds,
+    agg_stats.total_pending_feeds,
+    agg_stats.total_approved_feeds,
+    agg_stats.total_rejected_feeds,
+    agg_stats.total_hidden_feeds,
+    agg_stats.most_common_feed_type,
+    fbp.priority, 
+    fbp.total_by_priority,
+    u.id AS user_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    u.user_img,
+    COALESCE(fpu.pending_feeds_count, 0) AS pending_feeds_count,
+    COUNT(*) OVER() AS total_count,
+    f.id, 
+    f.created_at, 
+    f.updated_at, 
+    f.name, 
+    f.url, 
+    f.version, 
+    f.img_url, 
+    f.last_fetched_at,
+    f.feed_type, 
+    f.feed_description, 
+    f.is_hidden, 
+    f.approval_status, 
+    f.priority AS feed_priority,
+    COALESCE(ffc.follow_count, 0) AS follow_count
+FROM 
+    feeds f
+JOIN 
+    users u ON f.user_id = u.id
+LEFT JOIN 
+    aggregated_stats agg_stats ON TRUE
+LEFT JOIN 
+    feeds_with_priority fbp ON f.priority = fbp.priority
+LEFT JOIN 
+    feeds_per_user fpu ON u.id = fpu.user_id
+LEFT JOIN 
+    feed_follows_count ffc ON f.id = ffc.feed_id
+WHERE 
+    ($1 = '' OR to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $1))
+    AND (f.feed_type = $2 OR $2 = '')
+ORDER BY 
+    f.created_at ASC
+LIMIT 
+    $3 OFFSET $4
+`
+
+type AdminGetAllFeedsWithStatisticsParams struct {
+	Column1  interface{}
+	FeedType string
+	Limit    int32
+	Offset   int32
+}
+
+type AdminGetAllFeedsWithStatisticsRow struct {
+	TotalFeeds         sql.NullInt64
+	TotalPendingFeeds  sql.NullInt64
+	TotalApprovedFeeds sql.NullInt64
+	TotalRejectedFeeds sql.NullInt64
+	TotalHiddenFeeds   sql.NullInt64
+	MostCommonFeedType sql.NullString
+	Priority           sql.NullString
+	TotalByPriority    sql.NullInt64
+	UserID             int64
+	UserName           string
+	UserEmail          string
+	UserImg            string
+	PendingFeedsCount  int64
+	TotalCount         int64
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	Name               string
+	Url                string
+	Version            int32
+	ImgUrl             string
+	LastFetchedAt      sql.NullTime
+	FeedType           string
+	FeedDescription    string
+	IsHidden           bool
+	ApprovalStatus     string
+	FeedPriority       string
+	FollowCount        int64
+}
+
+func (q *Queries) AdminGetAllFeedsWithStatistics(ctx context.Context, arg AdminGetAllFeedsWithStatisticsParams) ([]AdminGetAllFeedsWithStatisticsRow, error) {
+	rows, err := q.db.QueryContext(ctx, adminGetAllFeedsWithStatistics,
+		arg.Column1,
+		arg.FeedType,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminGetAllFeedsWithStatisticsRow
+	for rows.Next() {
+		var i AdminGetAllFeedsWithStatisticsRow
+		if err := rows.Scan(
+			&i.TotalFeeds,
+			&i.TotalPendingFeeds,
+			&i.TotalApprovedFeeds,
+			&i.TotalRejectedFeeds,
+			&i.TotalHiddenFeeds,
+			&i.MostCommonFeedType,
+			&i.Priority,
+			&i.TotalByPriority,
+			&i.UserID,
+			&i.UserName,
+			&i.UserEmail,
+			&i.UserImg,
+			&i.PendingFeedsCount,
+			&i.TotalCount,
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.Url,
+			&i.Version,
+			&i.ImgUrl,
+			&i.LastFetchedAt,
+			&i.FeedType,
+			&i.FeedDescription,
+			&i.IsHidden,
+			&i.ApprovalStatus,
+			&i.FeedPriority,
+			&i.FollowCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const adminGetFeedsPendingApproval = `-- name: AdminGetFeedsPendingApproval :many
 
+WITH stats AS (
+    SELECT 
+        COUNT(*) FILTER (WHERE approval_status = 'pending') AS total_pending_feeds,
+        COUNT(*) FILTER (WHERE approval_status = 'approved') AS total_approved_feeds,
+        COUNT(*) FILTER (WHERE approval_status = 'rejected') AS total_rejected_feeds,
+        CAST(FLOOR(EXTRACT(EPOCH FROM (NOW() - MIN(created_at)))/86400) AS bigint) AS oldest_pending_days
+    FROM 
+        feeds
+),
+feeds_by_priority AS (
+    SELECT 
+        priority, 
+        COUNT(*) AS total_by_priority
+    FROM 
+        feeds
+    WHERE 
+        approval_status = 'pending'
+    GROUP BY 
+        priority
+),
+feeds_per_user AS (
+    SELECT 
+        users.id AS user_id, 
+        users.name AS user_name, 
+        users.email AS user_email,
+        COUNT(feeds.id) AS pending_feeds_count
+    FROM 
+        feeds
+    JOIN 
+        users ON feeds.user_id = users.id
+    WHERE 
+        feeds.approval_status = 'pending'
+    GROUP BY 
+        users.id, users.name, users.email
+)
 SELECT 
+    stats.total_pending_feeds,
+    stats.total_approved_feeds,
+    stats.total_rejected_feeds,
+    stats.oldest_pending_days,
+    fbp.priority, 
+    fbp.total_by_priority,
+    fpu.user_id, 
+    fpu.user_name, 
+    fpu.user_email,
+    fpu.pending_feeds_count,
     count(*) OVER() AS total_count,
     feeds.id, 
     feeds.created_at, 
@@ -36,15 +274,19 @@ SELECT
 FROM 
     feeds
 JOIN 
-    users 
-ON 
-    feeds.user_id = users.id
+    users ON feeds.user_id = users.id
+LEFT JOIN 
+    stats ON TRUE
+LEFT JOIN 
+    feeds_by_priority fbp ON feeds.priority = fbp.priority
+LEFT JOIN 
+    feeds_per_user fpu ON users.id = fpu.user_id
 WHERE 
     ($1 = '' OR to_tsvector('simple', feeds.name) @@ plainto_tsquery('simple', $1))
     AND (feeds.feed_type = $2 OR $2 = '')
     AND feeds.approval_status = 'pending'
 ORDER BY 
-    feeds.created_at DESC
+    feeds.created_at ASC
 LIMIT 
     $3 OFFSET $4
 `
@@ -57,23 +299,33 @@ type AdminGetFeedsPendingApprovalParams struct {
 }
 
 type AdminGetFeedsPendingApprovalRow struct {
-	TotalCount      int64
-	ID              uuid.UUID
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	Name            string
-	Url             string
-	UserID          int64
-	Version         int32
-	ImgUrl          string
-	FeedType        string
-	FeedDescription string
-	IsHidden        bool
-	ApprovalStatus  string
-	Priority        string
-	UserID_2        int64
-	UserName        string
-	UserImg         string
+	TotalPendingFeeds  sql.NullInt64
+	TotalApprovedFeeds sql.NullInt64
+	TotalRejectedFeeds sql.NullInt64
+	OldestPendingDays  sql.NullInt64
+	Priority           sql.NullString
+	TotalByPriority    sql.NullInt64
+	UserID             sql.NullInt64
+	UserName           sql.NullString
+	UserEmail          sql.NullString
+	PendingFeedsCount  sql.NullInt64
+	TotalCount         int64
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	Name               string
+	Url                string
+	UserID_2           int64
+	Version            int32
+	ImgUrl             string
+	FeedType           string
+	FeedDescription    string
+	IsHidden           bool
+	ApprovalStatus     string
+	Priority_2         string
+	UserID_3           int64
+	UserName_2         string
+	UserImg            string
 }
 
 //---------------------------------------------------------------------------
@@ -94,22 +346,32 @@ func (q *Queries) AdminGetFeedsPendingApproval(ctx context.Context, arg AdminGet
 	for rows.Next() {
 		var i AdminGetFeedsPendingApprovalRow
 		if err := rows.Scan(
+			&i.TotalPendingFeeds,
+			&i.TotalApprovedFeeds,
+			&i.TotalRejectedFeeds,
+			&i.OldestPendingDays,
+			&i.Priority,
+			&i.TotalByPriority,
+			&i.UserID,
+			&i.UserName,
+			&i.UserEmail,
+			&i.PendingFeedsCount,
 			&i.TotalCount,
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Name,
 			&i.Url,
-			&i.UserID,
+			&i.UserID_2,
 			&i.Version,
 			&i.ImgUrl,
 			&i.FeedType,
 			&i.FeedDescription,
 			&i.IsHidden,
 			&i.ApprovalStatus,
-			&i.Priority,
-			&i.UserID_2,
-			&i.UserName,
+			&i.Priority_2,
+			&i.UserID_3,
+			&i.UserName_2,
 			&i.UserImg,
 		); err != nil {
 			return nil, err
@@ -608,10 +870,13 @@ SELECT
     f.approval_status,
     COALESCE(ff.follow_count, 0) AS follow_count,
     COUNT(*) OVER() AS total_count,
-    fr.rejected_by,                  -- Add the rejector's username
-    fr.reason AS rejection_reason,   -- Add the rejection reason
-    fr.rejected_at,                  -- Add the rejection timestamp
-    u.name AS rejected_by_username   -- Add the rejector's username        
+    (SELECT COUNT(*) FROM feeds WHERE user_id = f.user_id) AS total_feeds_count,         -- Total feeds created by the user
+    (SELECT COUNT(*) FROM feeds WHERE user_id = f.user_id AND approval_status = 'approved') AS approved_feeds_count,  -- Approved feeds count
+    (SELECT COUNT(*) FROM feeds WHERE user_id = f.user_id AND approval_status = 'rejected') AS rejected_feeds_count,  -- Rejected feeds count
+    fr.rejected_by,                  -- Rejection details
+    fr.reason AS rejection_reason,   
+    fr.rejected_at,                  
+    u.name AS rejected_by_username   
 FROM 
     feeds f
 LEFT JOIN (
@@ -624,9 +889,9 @@ LEFT JOIN (
         feed_id
 ) ff ON f.id = ff.feed_id
 LEFT JOIN 
-    feed_rejections fr ON f.id = fr.feed_id AND f.approval_status = 'rejected' -- Join on feed_rejections with approval_status check
+    feed_rejections fr ON f.id = fr.feed_id AND f.approval_status = 'rejected'
 LEFT JOIN 
-    users u ON fr.rejected_by = u.id  -- Join with users to get the rejector's username
+    users u ON fr.rejected_by = u.id  
 WHERE 
     f.user_id = $1
     AND (to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $2) OR $2 = '')
@@ -662,6 +927,9 @@ type GetFeedsCreatedByUserRow struct {
 	ApprovalStatus     string
 	FollowCount        int64
 	TotalCount         int64
+	TotalFeedsCount    int64
+	ApprovedFeedsCount int64
+	RejectedFeedsCount int64
 	RejectedBy         sql.NullInt64
 	RejectionReason    sql.NullString
 	RejectedAt         sql.NullTime
@@ -698,6 +966,9 @@ func (q *Queries) GetFeedsCreatedByUser(ctx context.Context, arg GetFeedsCreated
 			&i.ApprovalStatus,
 			&i.FollowCount,
 			&i.TotalCount,
+			&i.TotalFeedsCount,
+			&i.ApprovedFeedsCount,
+			&i.RejectedFeedsCount,
 			&i.RejectedBy,
 			&i.RejectionReason,
 			&i.RejectedAt,

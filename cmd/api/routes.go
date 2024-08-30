@@ -188,6 +188,7 @@ func (app *application) adminRoutes() chi.Router {
 	// users
 	adminRoutes.Get("/users", app.adminGetAllUsersHandler)
 	// feeds
+	adminRoutes.Get("/feeds", app.AdminGetAllFeedsWithStatistics)
 	adminRoutes.Get("/feeds/approvals", app.adminGetFeedsPendingApprovalHandler)
 	adminRoutes.Patch("/feeds/approvals/{feedID}", app.adminUpdateFeed)
 	// permissions

@@ -97,12 +97,27 @@ type AdminFeed struct {
 	AdminFeedUser   AdminFeedUser `json:"feed_user"`
 	Approval_Status string        `json:"approval_status"`
 	Priority        string        `json:"priority"`
+	FollowCount     int64         `json:"follow_count"`
 }
 
 type AdminFeedUser struct {
 	UserID   int64  `json:"user_id"`
 	Name     string `json:"name"`
+	Email    string `json:"email"`
 	User_Img string `json:"user_img"`
+}
+
+type AdminFeedStats struct {
+	AdminPendingFeedStats AdminPendingFeedStats `json:"admin_pending_feed_stats"`
+	TotalHiddenFeeds      int64                 `json:"total_hidden_feeds"`
+	MostCommonFeedType    string                `json:"most_common_feed_type"`
+}
+
+type AdminPendingFeedStats struct {
+	TotalPendingFeeds  int64 `json:"total_pending_feeds"`
+	TotalApprovedFeeds int64 `json:"total_approved_feeds"`
+	TotalRejectedFeeds int64 `json:"total_rejected_feeds"`
+	OldestPendingFeed  int64 `json:"oldest_pending_feed"`
 }
 
 func UpdateAdminFeedFields(input *AdminFeedInput, adminFeed *AdminFeed) {
@@ -563,7 +578,7 @@ func (m AdminModel) AdminDeletePermission(permissionID int64) error {
 	return nil
 }
 
-func (m AdminModel) AdminGetFeedsPendingApproval(name, feed_type string, filters Filters) ([]*AdminFeed, Metadata, error) {
+func (m AdminModel) AdminGetFeedsPendingApproval(name, feed_type string, filters Filters) ([]*AdminFeed, Metadata, AdminPendingFeedStats, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -576,8 +591,9 @@ func (m AdminModel) AdminGetFeedsPendingApproval(name, feed_type string, filters
 	})
 	//check for an error
 	if err != nil {
-		return nil, Metadata{}, err
+		return nil, Metadata{}, AdminPendingFeedStats{}, err
 	}
+	var adminPendingFeedStats AdminPendingFeedStats
 	totalRecords := 0
 	adminFeeds := []*AdminFeed{}
 	for _, row := range rows {
@@ -590,7 +606,7 @@ func (m AdminModel) AdminGetFeedsPendingApproval(name, feed_type string, filters
 		feed.Name = row.Name
 		feed.Url = row.Url
 		feed.Version = row.Version
-		feed.UserID = row.UserID
+		feed.UserID = row.UserID.Int64
 		feed.ImgURL = row.ImgUrl
 		feed.FeedType = row.FeedType
 		feed.FeedDescription = row.FeedDescription
@@ -598,16 +614,21 @@ func (m AdminModel) AdminGetFeedsPendingApproval(name, feed_type string, filters
 		// create a new admin feed
 		adminFeed := &AdminFeed{
 			Feed:            feed,
-			AdminFeedUser:   AdminFeedUser{UserID: row.UserID, Name: row.UserName, User_Img: row.UserImg},
+			AdminFeedUser:   AdminFeedUser{UserID: row.UserID.Int64, Name: row.UserName.String, Email: row.UserEmail.String, User_Img: row.UserImg},
 			Approval_Status: row.ApprovalStatus,
-			Priority:        row.Priority,
+			Priority:        row.Priority.String,
 		}
+		// fill statistics
+		adminPendingFeedStats.TotalPendingFeeds = row.TotalPendingFeeds.Int64
+		adminPendingFeedStats.TotalApprovedFeeds = row.TotalApprovedFeeds.Int64
+		adminPendingFeedStats.TotalRejectedFeeds = row.TotalRejectedFeeds.Int64
+		adminPendingFeedStats.OldestPendingFeed = row.OldestPendingDays.Int64
 		// append to the list
 		adminFeeds = append(adminFeeds, adminFeed)
 	}
 	// calculate the metadata
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
-	return adminFeeds, metadata, nil
+	return adminFeeds, metadata, adminPendingFeedStats, nil
 }
 
 func (m AdminModel) AdminGetFeedByID(feedID uuid.UUID) (*AdminFeed, error) {
@@ -648,6 +669,67 @@ func (m AdminModel) AdminGetFeedByID(feedID uuid.UUID) (*AdminFeed, error) {
 	// return the feed
 	return adminFeed, nil
 }
+
+// AdminGetAllFeedsWithStatistics() returns all the feeds in the database with their statistics.
+// The statistics include the total number of feeds, the total number of pending feeds, the total number of approved feeds,
+// the total number of rejected feeds, the total number of hidden feeds, and the most common feed type.
+// This endpoint supports both filters and pagination.
+func (m AdminModel) AdminGetAllFeedsWithStatistics(name, feed_type string, filters Filters) ([]*AdminFeed, Metadata, AdminFeedStats, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// retrieve our data
+	rows, err := m.DB.AdminGetAllFeedsWithStatistics(ctx, database.AdminGetAllFeedsWithStatisticsParams{
+		Column1:  name,
+		FeedType: feed_type, // Convert string to sql.NullString
+		Limit:    int32(filters.limit()),
+		Offset:   int32(filters.offset()),
+	})
+	//check for an error
+	if err != nil {
+		return nil, Metadata{}, AdminFeedStats{}, err
+	}
+	totalRecords := 0
+	adminFeeds := []*AdminFeed{}
+	var adminFeedStats AdminFeedStats
+	for _, row := range rows {
+		// create a new feed
+		var feed Feed
+		totalRecords = int(row.TotalCount)
+		feed.ID = row.ID
+		feed.CreatedAt = row.CreatedAt
+		feed.UpdatedAt = row.UpdatedAt
+		feed.Name = row.Name
+		feed.Url = row.Url
+		feed.Version = row.Version
+		feed.UserID = row.UserID
+		feed.ImgURL = row.ImgUrl
+		feed.FeedType = row.FeedType
+		feed.FeedDescription = row.FeedDescription
+		feed.Is_Hidden = row.IsHidden
+		// create a new admin feed
+		adminFeed := &AdminFeed{
+			Feed:            feed,
+			AdminFeedUser:   AdminFeedUser{UserID: row.UserID, Name: row.UserName, Email: row.UserEmail, User_Img: row.UserImg},
+			Approval_Status: row.ApprovalStatus,
+			Priority:        row.Priority.String,
+		}
+		// follow count
+		adminFeed.FollowCount = row.FollowCount
+		// stats
+		adminFeedStats.AdminPendingFeedStats.TotalPendingFeeds = row.TotalPendingFeeds.Int64
+		adminFeedStats.AdminPendingFeedStats.TotalApprovedFeeds = row.TotalApprovedFeeds.Int64
+		adminFeedStats.AdminPendingFeedStats.TotalRejectedFeeds = row.TotalRejectedFeeds.Int64
+		adminFeedStats.TotalHiddenFeeds = row.TotalHiddenFeeds.Int64
+		adminFeedStats.MostCommonFeedType = row.MostCommonFeedType.String
+		// append to the list
+		adminFeeds = append(adminFeeds, adminFeed)
+	}
+	// calculate the metadata
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	return adminFeeds, metadata, adminFeedStats, nil
+}
+
 func (m AdminModel) AdminUpdateFeed(adminFeed *AdminFeed) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

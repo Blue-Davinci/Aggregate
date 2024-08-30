@@ -88,6 +88,11 @@ type FeedsCreatedByUser struct {
 	Approval_Status string       `json:"approval_status"`
 	RejectedFeed    RejectedFeed `json:"rejected_feed"`
 }
+type CreationStatistics struct {
+	TotalFeedsCreated  int64 `json:"total_feeds_created"`
+	TotalFeedsApproved int64 `json:"total_feeds_approved"`
+	TotalFeedsRejected int64 `json:"total_feeds_rejected"`
+}
 
 // A rejected feed holds info on what and how a feed was rejected and by whom
 type RejectedFeed struct {
@@ -432,7 +437,7 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name, feed_type strin
 	return feedWithFollows, metadata, nil
 }
 
-func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters Filters) ([]*FeedsCreatedByUser, Metadata, error) {
+func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters Filters) ([]*FeedsCreatedByUser, Metadata, CreationStatistics, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// retrieve our data
@@ -443,9 +448,11 @@ func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters F
 		Offset:         int32(filters.offset()),
 	})
 	if err != nil {
-		return nil, Metadata{}, err
+		return nil, Metadata{}, CreationStatistics{}, err
 	}
 	totalRecords := 0
+	// statistics
+	var creationStatistics CreationStatistics
 	feedCreatedByUsers := []*FeedsCreatedByUser{}
 	for _, row := range rows {
 		var createdFeed FeedsCreatedByUser
@@ -470,15 +477,21 @@ func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters F
 			RejectedByUserName: row.RejectedByUsername.String,
 			Reason:             row.RejectionReason.String,
 		}
-		createdFeed.Follow_Count = row.FollowCount
+		// add our status
 		createdFeed.Approval_Status = row.ApprovalStatus
+		createdFeed.Follow_Count = row.FollowCount
+		// update our statistics
+		creationStatistics.TotalFeedsCreated = row.TotalFeedsCount
+		creationStatistics.TotalFeedsApproved = row.ApprovedFeedsCount
+		creationStatistics.TotalFeedsRejected = row.RejectedFeedsCount
 
 		feedCreatedByUsers = append(feedCreatedByUsers, &createdFeed)
 	}
 	// Generate a Metadata struct, passing in the total record count and pagination
 	// parameters from the client.
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
-	return feedCreatedByUsers, metadata, nil
+	fmt.Println("Rejected Feed: ", creationStatistics)
+	return feedCreatedByUsers, metadata, creationStatistics, nil
 }
 
 func (m FeedModel) CreateFeedFollow(feedfollow *FeedFollow) (*FeedFollow, error) {
