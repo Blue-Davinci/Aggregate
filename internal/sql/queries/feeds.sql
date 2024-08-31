@@ -5,7 +5,7 @@ WHERE id = $1;
 
 -- name: UpdateFeed :one
 UPDATE feeds
-SET updated_at = NOW(), name = $3, url = $4, version = version + 1, img_url = $5, feed_type = $6, feed_description = $7, is_hidden = $8
+SET updated_at = NOW(), name = $3, url = $4, version = version + 1, img_url = $5, feed_type = $6, feed_description = $7, is_hidden = $8, approval_status = 'pending'
 WHERE id = $1 AND user_id = $2 AND version = $9
 RETURNING updated_at, version;
 
@@ -386,6 +386,7 @@ WITH aggregated_stats AS (
         COUNT(*) FILTER (WHERE approval_status = 'pending') AS total_pending_feeds,
         COUNT(*) FILTER (WHERE approval_status = 'approved') AS total_approved_feeds,
         COUNT(*) FILTER (WHERE approval_status = 'rejected') AS total_rejected_feeds,
+        COUNT(*) FILTER (WHERE priority = 'high') AS total_high_priority_feeds,
         COUNT(*) FILTER (WHERE is_hidden = true) AS total_hidden_feeds,
         -- Subquery to get the most common feed_type
         (SELECT feed_type
@@ -434,6 +435,7 @@ SELECT
     agg_stats.total_rejected_feeds,
     agg_stats.total_hidden_feeds,
     agg_stats.most_common_feed_type,
+    agg_stats.total_high_priority_feeds,
     fbp.priority, 
     fbp.total_by_priority,
     u.id AS user_id,
@@ -472,6 +474,11 @@ WHERE
     ($1 = '' OR to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $1))
     AND (f.feed_type = $2 OR $2 = '')
 ORDER BY 
-    f.created_at ASC
+    CASE
+        WHEN f.priority = 'high' THEN 1
+        WHEN f.priority = 'medium' THEN 2
+        ELSE 3
+    END,
+    f.created_at DESC
 LIMIT 
     $3 OFFSET $4;

@@ -108,9 +108,10 @@ type AdminFeedUser struct {
 }
 
 type AdminFeedStats struct {
-	AdminPendingFeedStats AdminPendingFeedStats `json:"admin_pending_feed_stats"`
-	TotalHiddenFeeds      int64                 `json:"total_hidden_feeds"`
-	MostCommonFeedType    string                `json:"most_common_feed_type"`
+	AdminPendingFeedStats        AdminPendingFeedStats `json:"admin_pending_feed_stats"`
+	TotalHiddenFeeds             int64                 `json:"total_hidden_feeds"`
+	MostCommonFeedType           string                `json:"most_common_feed_type"`
+	TotalRecordsWithHighPriority int64                 `json:"total_records_with_high_priority"`
 }
 
 type AdminPendingFeedStats struct {
@@ -712,14 +713,14 @@ func (m AdminModel) AdminGetAllFeedsWithStatistics(name, feed_type string, filte
 			Feed:            feed,
 			AdminFeedUser:   AdminFeedUser{UserID: row.UserID, Name: row.UserName, Email: row.UserEmail, User_Img: row.UserImg},
 			Approval_Status: row.ApprovalStatus,
-			Priority:        row.Priority.String,
+			Priority:        row.FeedPriority,
+			FollowCount:     row.FollowCount,
 		}
-		// follow count
-		adminFeed.FollowCount = row.FollowCount
 		// stats
 		adminFeedStats.AdminPendingFeedStats.TotalPendingFeeds = row.TotalPendingFeeds.Int64
 		adminFeedStats.AdminPendingFeedStats.TotalApprovedFeeds = row.TotalApprovedFeeds.Int64
 		adminFeedStats.AdminPendingFeedStats.TotalRejectedFeeds = row.TotalRejectedFeeds.Int64
+		adminFeedStats.TotalRecordsWithHighPriority = row.TotalHighPriorityFeeds.Int64
 		adminFeedStats.TotalHiddenFeeds = row.TotalHiddenFeeds.Int64
 		adminFeedStats.MostCommonFeedType = row.MostCommonFeedType.String
 		// append to the list

@@ -269,7 +269,8 @@ func (m FeedModel) UpdateFeed(userID int64, feed *Feed) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	// update the feed
+	// update the feed. An updated feed wil be set as pending approval
+	// until an admin/mod approves it.
 	row, err := m.DB.UpdateFeed(ctx, database.UpdateFeedParams{
 		ID:              feed.ID,
 		UserID:          userID, // use the user ID from the context rather than the feed
@@ -297,6 +298,9 @@ func (m FeedModel) UpdateFeed(userID int64, feed *Feed) error {
 	return nil
 }
 
+// Insert() inserts a new feed into the database. It accepts a pointer to a Feed struct
+// and returns an error. If the feed is successfully inserted, the ID, CreatedAt, UpdatedAt,
+// and Version fields will be updated in the struct.
 func (m FeedModel) Insert(feed *Feed) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -336,6 +340,10 @@ func (m FeedModel) Insert(feed *Feed) error {
 	return nil
 }
 
+// GetAllFeeds() returns all feeds with an 'isFollowed' feed that tells the frontend
+// whether a feed is followed or not. It also takes in a search string: 'name' if available and searches
+// for a feed matching that, as well as a feed_type filter. The caller can specify
+// the number of records in relation to an offset provided.
 func (m FeedModel) GetAllFeeds(name, feed_type string, filters Filters) ([]*FeedsWithFollows, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -437,6 +445,10 @@ func (m FeedModel) GetAllFeedsFollowedByUser(userID int64, name, feed_type strin
 	return feedWithFollows, metadata, nil
 }
 
+// GetAllFeedsCreatedByUser() returns all feeds created/made by a user. It supports pagination
+// as well as search via the feed's 'name' parameter as well as a filter by the feed type.
+// It also returns statistics including:  total number of feeds created by the user, the total number of feeds
+// approved and the total number of feeds rejected.
 func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters Filters) ([]*FeedsCreatedByUser, Metadata, CreationStatistics, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -494,6 +506,8 @@ func (m FeedModel) GetAllFeedsCreatedByUser(userID int64, name string, filters F
 	return feedCreatedByUsers, metadata, creationStatistics, nil
 }
 
+// The CreateFeedFollow() method accepts a pointer to a FeedFollow struct and creates a new
+// feed follow record in the database i.e shows that the user follows a specific feed.
 func (m FeedModel) CreateFeedFollow(feedfollow *FeedFollow) (*FeedFollow, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -636,6 +650,9 @@ func (m FeedModel) GetTopFeedCreators(filters Filters) ([]*TopCreators, error) {
 	return topCreators, nil
 }
 
+// GetTopFollowedFeeds() returns the top followed feeds based on the number of followers
+// This route allows for paginations and allows the users to also send a custom length
+// or rather pagesize for how many top feeds they need, the default is 5.
 func (m FeedModel) GetTopFollowedFeeds(filters Filters) ([]*TopFeeds, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
