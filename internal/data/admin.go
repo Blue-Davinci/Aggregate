@@ -675,14 +675,19 @@ func (m AdminModel) AdminGetFeedByID(feedID uuid.UUID) (*AdminFeed, error) {
 // The statistics include the total number of feeds, the total number of pending feeds, the total number of approved feeds,
 // the total number of rejected feeds, the total number of hidden feeds, and the most common feed type.
 // This endpoint supports both filters and pagination.
-func (m AdminModel) AdminGetAllFeedsWithStatistics(name, feed_type string, filters Filters) ([]*AdminFeed, Metadata, AdminFeedStats, error) {
+func (m AdminModel) AdminGetAllFeedsWithStatistics(name, feed_type, priority string, is_hidden string, filters Filters) ([]*AdminFeed, Metadata, AdminFeedStats, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	// convert isHidden to a nullable parameter for SQL
+	// Prepare the parameter for SQL
+
 	// retrieve our data
 	rows, err := m.DB.AdminGetAllFeedsWithStatistics(ctx, database.AdminGetAllFeedsWithStatisticsParams{
 		Column1:  name,
 		FeedType: feed_type, // Convert string to sql.NullString
+		Column3:  is_hidden,
+		Priority: priority,
 		Limit:    int32(filters.limit()),
 		Offset:   int32(filters.offset()),
 	})
@@ -728,6 +733,7 @@ func (m AdminModel) AdminGetAllFeedsWithStatistics(name, feed_type string, filte
 	}
 	// calculate the metadata
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	fmt.Println("Total records: ", totalRecords)
 	return adminFeeds, metadata, adminFeedStats, nil
 }
 

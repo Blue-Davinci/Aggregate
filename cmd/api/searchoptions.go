@@ -36,3 +36,20 @@ func (app *application) getFeedTypeSearchOptionsHandler(w http.ResponseWriter, r
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+// getFeedPrioritySearchOptionsHandler() Is a search option endpoint designed to return all available
+// distinc feed priorities from the DB
+func (app *application) getFeedPrioritySearchOptionsHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the feed priority search options from the database
+	searchOptions, err := app.models.SearchOptions.GetFeedPrioritySearchOptions()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	//return the search options as a JSON response
+	err = app.writeJSON(w, http.StatusOK, envelope{"feed_priorities": searchOptions}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

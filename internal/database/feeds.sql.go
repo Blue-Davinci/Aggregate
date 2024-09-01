@@ -107,6 +107,8 @@ LEFT JOIN
 WHERE 
     ($1 = '' OR to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $1))
     AND (f.feed_type = $2 OR $2 = '')
+    AND (COALESCE($3 = '', TRUE) OR f.is_hidden = ($3 = 'true'))
+    AND (f.priority = $4 OR $4 = '')
 ORDER BY 
     CASE
         WHEN f.priority = 'high' THEN 1
@@ -115,12 +117,14 @@ ORDER BY
     END,
     f.created_at DESC
 LIMIT 
-    $3 OFFSET $4
+    $5 OFFSET $6
 `
 
 type AdminGetAllFeedsWithStatisticsParams struct {
 	Column1  interface{}
 	FeedType string
+	Column3  interface{}
+	Priority string
 	Limit    int32
 	Offset   int32
 }
@@ -161,6 +165,8 @@ func (q *Queries) AdminGetAllFeedsWithStatistics(ctx context.Context, arg AdminG
 	rows, err := q.db.QueryContext(ctx, adminGetAllFeedsWithStatistics,
 		arg.Column1,
 		arg.FeedType,
+		arg.Column3,
+		arg.Priority,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -767,6 +773,34 @@ func (q *Queries) GetFeedById(ctx context.Context, id uuid.UUID) (GetFeedByIdRow
 		&i.Priority,
 	)
 	return i, err
+}
+
+const getFeedPrioritySearchOptions = `-- name: GetFeedPrioritySearchOptions :many
+SELECT DISTINCT priority
+FROM feeds
+`
+
+func (q *Queries) GetFeedPrioritySearchOptions(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedPrioritySearchOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var priority string
+		if err := rows.Scan(&priority); err != nil {
+			return nil, err
+		}
+		items = append(items, priority)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getFeedSearchOptions = `-- name: GetFeedSearchOptions :many

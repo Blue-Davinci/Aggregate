@@ -23,6 +23,11 @@ type SearchOptionFeedType struct {
 	Feed_Type string `json:"feed_type"`
 }
 
+type SearchOptionFeedPriority struct {
+	Feed_ID       int    `json:"feed_id"`
+	Feed_Priority string `json:"feed_priority"`
+}
+
 // The ID's will be used for interopolations for the frontend
 
 // GetFeedSearchOptions() returns all available distinct feeds
@@ -63,4 +68,24 @@ func (m SearchOptionsDataModel) GetFeedTypeSearchOptions() ([]*SearchOptionFeedT
 		feedTypes = append(feedTypes, &feedType)
 	}
 	return feedTypes, nil
+}
+
+// GetFeedPrioritySearchOptions() returns all available distinct feed priorities
+// we have in the database. For the ID's, we will just use the indexes
+func (m SearchOptionsDataModel) GetFeedPrioritySearchOptions() ([]*SearchOptionFeedPriority, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	feeds, err := m.DB.GetFeedPrioritySearchOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	feedPriorities := []*SearchOptionFeedPriority{}
+	for i, feed_priority := range feeds {
+		var feedPriority SearchOptionFeedPriority
+		feedPriority.Feed_ID = i + 1
+		feedPriority.Feed_Priority = feed_priority
+		feedPriorities = append(feedPriorities, &feedPriority)
+	}
+	return feedPriorities, nil
 }

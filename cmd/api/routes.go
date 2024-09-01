@@ -135,6 +135,7 @@ func (app *application) feedRoutes(dynamicMiddleware, limitationsMiddleware *ali
 func (app *application) searchOptionsRoutes(dynamicMiddleware *alice.Chain) chi.Router {
 	searchOptionsRoutes := chi.NewRouter()
 	searchOptionsRoutes.With(dynamicMiddleware.Then).Get("/feeds", app.getFeedSearchOptionsHandler)
+	searchOptionsRoutes.With(dynamicMiddleware.Then).Get("/feed-priorities", app.getFeedPrioritySearchOptionsHandler)
 	// This is a general route intended for the feeds search options
 	searchOptionsRoutes.Get("/feed-types", app.getFeedTypeSearchOptionsHandler)
 	return searchOptionsRoutes
@@ -188,7 +189,7 @@ func (app *application) adminRoutes() chi.Router {
 	// users
 	adminRoutes.Get("/users", app.adminGetAllUsersHandler)
 	// feeds
-	adminRoutes.Get("/feeds", app.AdminGetAllFeedsWithStatistics)
+	adminRoutes.Get("/feeds", app.adminGetAllFeedsWithStatistics)
 	adminRoutes.Get("/feeds/approvals", app.adminGetFeedsPendingApprovalHandler)
 	adminRoutes.Patch("/feeds/approvals/{feedID}", app.adminUpdateFeed)
 	// permissions

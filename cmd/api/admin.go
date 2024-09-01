@@ -761,11 +761,16 @@ func (app *application) adminGetAllAnnouncmentsHandler(w http.ResponseWriter, r 
 	}
 }
 
-func (app *application) AdminGetAllFeedsWithStatistics(w http.ResponseWriter, r *http.Request) {
+// adminGetAllFeedsWithStatistics() is the admin endpoint that returns all the feeds
+// in the system with their statistics. This route supports a full text search for the feed Name,
+// hidden status and priority as well as pagination and sorting.
+func (app *application) adminGetAllFeedsWithStatistics(w http.ResponseWriter, r *http.Request) {
 	// make a struct to hold what we would want from the queries
 	var input struct {
 		Name      string
 		Feed_Type string
+		Is_Hidden string
+		Priority  string
 		data.Filters
 	}
 	//validate if queries are provided
@@ -775,6 +780,9 @@ func (app *application) AdminGetAllFeedsWithStatistics(w http.ResponseWriter, r 
 	// use our helpers to convert the queries
 	input.Name = app.readString(qs, "name", "")
 	input.Feed_Type = app.readString(qs, "feed_type", "")
+	// read bool as a string and convert to bool
+	input.Is_Hidden = app.readString(qs, "is_hidden", "")
+	input.Priority = app.readString(qs, "priority", "")
 	//get the page & pagesizes as ints and set to the embedded struct
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
@@ -788,7 +796,8 @@ func (app *application) AdminGetAllFeedsWithStatistics(w http.ResponseWriter, r 
 		return
 	}
 	// get the feeds
-	feeds, metadata, adminFeedStats, err := app.models.Admin.AdminGetAllFeedsWithStatistics(input.Name, input.Feed_Type, input.Filters)
+	feeds, metadata, adminFeedStats, err := app.models.Admin.AdminGetAllFeedsWithStatistics(input.Name, input.Feed_Type,
+		input.Priority, input.Is_Hidden, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

@@ -23,6 +23,10 @@ FROM feeds;
 SELECT DISTINCT feed_type
 FROM feeds;
 
+-- name: GetFeedPrioritySearchOptions :many
+SELECT DISTINCT priority
+FROM feeds;
+
 -- name: CreateFeed :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id, img_url, feed_type, feed_description, is_hidden) 
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
@@ -473,6 +477,8 @@ LEFT JOIN
 WHERE 
     ($1 = '' OR to_tsvector('simple', f.name) @@ plainto_tsquery('simple', $1))
     AND (f.feed_type = $2 OR $2 = '')
+    AND (COALESCE($3 = '', TRUE) OR f.is_hidden = ($3 = 'true'))
+    AND (f.priority = $4 OR $4 = '')
 ORDER BY 
     CASE
         WHEN f.priority = 'high' THEN 1
@@ -481,4 +487,4 @@ ORDER BY
     END,
     f.created_at DESC
 LIMIT 
-    $3 OFFSET $4;
+    $5 OFFSET $6;
