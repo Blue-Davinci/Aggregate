@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	FeedTypeErrorType = "FeedType"
+	FeedTypeErrorType            = "FeedType"
+	FeedContextExceededErrorType = "FeedContextExceeded"
 )
 
 var (
@@ -119,6 +120,8 @@ func (m ErrorLogsDataModel) GetScraperErrorLogByID(errorID int32) (*ScraperError
 	}, nil
 }
 
+// GetAllScraperErrorLogs() retrieves all the error logs from the db
+// based on the filters provided
 func (m ErrorLogsDataModel) GetAllScraperErrorLogs(filters Filters) (*[]ScraperErrorLog, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

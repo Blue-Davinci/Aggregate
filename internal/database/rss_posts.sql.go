@@ -59,12 +59,13 @@ INSERT INTO rssfeed_posts (
     itemtitle,
     itemdescription, 
     itempublished_at, 
+    itemcontent,
     itemurl, 
     img_url, 
     feed_id
 )
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, $10, $11, $12, $13)
-RETURNING id, created_at, updated_at, channeltitle, channelurl, channeldescription, channellanguage, itemtitle, itemdescription, itempublished_at, itemurl, img_url, feed_id
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, $10, $11, $12, $13, $14)
+RETURNING id, created_at, updated_at, channeltitle, channelurl, channeldescription, channellanguage, itemtitle, itemdescription, itempublished_at, itemurl, img_url, feed_id, itemcontent
 `
 
 type CreateRssFeedPostParams struct {
@@ -78,6 +79,7 @@ type CreateRssFeedPostParams struct {
 	Itemtitle          string
 	Itemdescription    sql.NullString
 	ItempublishedAt    time.Time
+	Itemcontent        sql.NullString
 	Itemurl            string
 	ImgUrl             string
 	FeedID             uuid.UUID
@@ -96,6 +98,7 @@ func (q *Queries) CreateRssFeedPost(ctx context.Context, arg CreateRssFeedPostPa
 		arg.Itemtitle,
 		arg.Itemdescription,
 		arg.ItempublishedAt,
+		arg.Itemcontent,
 		arg.Itemurl,
 		arg.ImgUrl,
 		arg.FeedID,
@@ -115,6 +118,7 @@ func (q *Queries) CreateRssFeedPost(ctx context.Context, arg CreateRssFeedPostPa
 		&i.Itemurl,
 		&i.ImgUrl,
 		&i.FeedID,
+		&i.Itemcontent,
 	)
 	return i, err
 }
@@ -136,7 +140,7 @@ func (q *Queries) DeleteRSSFavoritePost(ctx context.Context, arg DeleteRSSFavori
 
 const getFollowedRssPostsForUser = `-- name: GetFollowedRssPostsForUser :many
 SELECT 
-    p.id, p.created_at, p.updated_at, p.channeltitle, p.channelurl, p.channeldescription, p.channellanguage, p.itemtitle, p.itemdescription, p.itempublished_at, p.itemurl, p.img_url, p.feed_id, 
+    p.id, p.created_at, p.updated_at, p.channeltitle, p.channelurl, p.channeldescription, p.channellanguage, p.itemtitle, p.itemdescription, p.itempublished_at, p.itemurl, p.img_url, p.feed_id, p.itemcontent, 
     COALESCE(pf.is_favorite, false) AS is_favorite,
     COUNT(*) OVER() AS total_count
 FROM 
@@ -188,6 +192,7 @@ type GetFollowedRssPostsForUserRow struct {
 	Itemurl            string
 	ImgUrl             string
 	FeedID             uuid.UUID
+	Itemcontent        sql.NullString
 	IsFavorite         bool
 	TotalCount         int64
 }
@@ -221,6 +226,7 @@ func (q *Queries) GetFollowedRssPostsForUser(ctx context.Context, arg GetFollowe
 			&i.Itemurl,
 			&i.ImgUrl,
 			&i.FeedID,
+			&i.Itemcontent,
 			&i.IsFavorite,
 			&i.TotalCount,
 		); err != nil {
@@ -287,6 +293,7 @@ SELECT
     p.channellanguage,
     p.itemtitle,
     p.itemdescription,
+    p.itemcontent,
     p.itempublished_at,
     p.itemurl,
     p.img_url,
@@ -327,6 +334,7 @@ type GetRSSFavoritePostsOnlyForUserRow struct {
 	Channellanguage    sql.NullString
 	Itemtitle          string
 	Itemdescription    sql.NullString
+	Itemcontent        sql.NullString
 	ItempublishedAt    time.Time
 	Itemurl            string
 	ImgUrl             string
@@ -361,6 +369,7 @@ func (q *Queries) GetRSSFavoritePostsOnlyForUser(ctx context.Context, arg GetRSS
 			&i.Channellanguage,
 			&i.Itemtitle,
 			&i.Itemdescription,
+			&i.Itemcontent,
 			&i.ItempublishedAt,
 			&i.Itemurl,
 			&i.ImgUrl,
@@ -382,7 +391,7 @@ func (q *Queries) GetRSSFavoritePostsOnlyForUser(ctx context.Context, arg GetRSS
 }
 
 const getRandomRSSPosts = `-- name: GetRandomRSSPosts :many
-SELECT id, created_at, updated_at, channeltitle, channelurl, channeldescription, channellanguage, itemtitle, itemdescription, itempublished_at, itemurl, img_url, feed_id
+SELECT id, created_at, updated_at, channeltitle, channelurl, channeldescription, channellanguage, itemtitle, itemdescription, itempublished_at, itemurl, img_url, feed_id, itemcontent
 FROM rssfeed_posts
 WHERE feed_id = $1
 ORDER BY RANDOM()
@@ -418,6 +427,7 @@ func (q *Queries) GetRandomRSSPosts(ctx context.Context, arg GetRandomRSSPostsPa
 			&i.Itemurl,
 			&i.ImgUrl,
 			&i.FeedID,
+			&i.Itemcontent,
 		); err != nil {
 			return nil, err
 		}
@@ -443,6 +453,7 @@ SELECT
     p.channellanguage,
     p.itemtitle,
     p.itemdescription,
+    p.itemcontent,
     p.itempublished_at,
     p.itemurl,
     p.img_url,
@@ -474,6 +485,7 @@ type GetRssPostByPostIDRow struct {
 	Channellanguage    sql.NullString
 	Itemtitle          string
 	Itemdescription    sql.NullString
+	Itemcontent        sql.NullString
 	ItempublishedAt    time.Time
 	Itemurl            string
 	ImgUrl             string
@@ -495,6 +507,7 @@ func (q *Queries) GetRssPostByPostID(ctx context.Context, arg GetRssPostByPostID
 		&i.Channellanguage,
 		&i.Itemtitle,
 		&i.Itemdescription,
+		&i.Itemcontent,
 		&i.ItempublishedAt,
 		&i.Itemurl,
 		&i.ImgUrl,

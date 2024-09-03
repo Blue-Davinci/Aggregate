@@ -1,2 +1,3 @@
 \bin
+\output
 cmd/api/.env

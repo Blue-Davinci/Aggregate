@@ -28,10 +28,13 @@ var (
 )
 
 type config struct {
-	port      int
-	env       string
-	sanitizer *bluemonday.Policy
-	db        struct {
+	port         int
+	env          string
+	sanitization struct {
+		sanitizer *bluemonday.Policy
+		usestrict bool
+	}
+	db struct {
 		dsn          string
 		maxOpenConns int
 		maxIdleConns int
@@ -149,6 +152,8 @@ func main() {
 		cfg.cors.trustedOrigins = strings.Fields(val)
 		return nil
 	})
+	// Sanitization
+	flag.BoolVar(&cfg.sanitization.usestrict, "sanitization-strict", false, "Use strict sanitization")
 	// fetching interval for the notifier
 	flag.Int64Var(&cfg.notifier.interval, "notifier-interval", 10, "Interval in minutes for the notifier to fetch new notifications")
 	// delete interval for the notifier
@@ -161,7 +166,13 @@ func main() {
 	cfg.paystack.cronJob = cron.New()
 	cfg.notifier.cronJob = cron.New()
 	// Initialize our sanitizer
-	cfg.sanitizer = bluemonday.UGCPolicy()
+	// if the usestrict flag is set to true, then use the StrictPolicy() method to create a new Policy object.
+	// Otherwise, use the UGCPolicy() method to create a new Policy object.
+	if cfg.sanitization.usestrict {
+		cfg.sanitization.sanitizer = bluemonday.StrictPolicy()
+	} else {
+		cfg.sanitization.sanitizer = bluemonday.UGCPolicy()
+	}
 	// If the version flag value is true, then print out the version number and
 	// immediately exit.
 	if *displayVersion {

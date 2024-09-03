@@ -167,6 +167,7 @@ type RssfeedPost struct {
 	Itemurl            string
 	ImgUrl             string
 	FeedID             uuid.UUID
+	Itemcontent        sql.NullString
 }
 
 type ScraperErrorLog struct {

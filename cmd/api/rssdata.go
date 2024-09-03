@@ -71,16 +71,26 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 		rssFeeds, err := app.models.RSSFeedData.GetRSSFeeds(
 			app.config.scraper.scraperclient.retrymax,
 			app.config.scraper.scraperclient.timeout,
-			feed.Url)
+			feed.Url, app.config.sanitization.sanitizer)
 		if err != nil {
 			switch {
 			case err == data.ErrContextDeadline:
-				app.logger.PrintInfo(err.Error(), map[string]string{
-					"Feed": feed.Name,
-					"URL":  feed.Url,
-				})
+				// create our error detail with a context errorType
+				errorDetail := data.ScraperErrorLog{
+					ErrorType:       data.FeedContextExceededErrorType,
+					Message:         err.Error(),
+					FeedID:          feed.ID,
+					OccurredAt:      time.Now().UTC(),
+					StatusCode:      rssFeeds.StatusCode,
+					RetryAttempts:   rssFeeds.RetryMax,
+					AdminNotified:   false,
+					Resolved:        false,
+					ResolutionNotes: "",
+				}
+				// Insert the error into the database
+				_ = app.scraperInsertScraperError(&errorDetail, feed.Name, feed.Url)
 			case err == data.ErrUnableToDetectFeedType:
-				//insert the feed into the database
+				// create our error detail with a feedType errorType
 				errorDetail := data.ScraperErrorLog{
 					ErrorType:       data.FeedTypeErrorType,
 					Message:         err.Error(),
@@ -93,13 +103,7 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 					ResolutionNotes: "",
 				}
 				// Insert the error into the database
-				_ = app.scraperInsertScraperError(&errorDetail)
-				// log the error
-				app.logger.PrintInfo(err.Error(), map[string]string{
-					"Feed": feed.Name,
-					"URL":  feed.Url,
-				})
-
+				_ = app.scraperInsertScraperError(&errorDetail, feed.Name, feed.Url)
 			default:
 				app.logger.PrintError(err, map[string]string{
 					"Error Fetching RSS Feeds": "GetRSSFeeds",
@@ -447,7 +451,7 @@ func (app *application) GetDetailedFavoriteRSSPosts(w http.ResponseWriter, r *ht
 }
 
 // / Helpers
-func (app *application) scraperInsertScraperError(errorDetail *data.ScraperErrorLog) error {
+func (app *application) scraperInsertScraperError(errorDetail *data.ScraperErrorLog, name, url string) error {
 	err := app.models.ErrorLogs.InsertScraperErrorLog(errorDetail)
 	// log the error if we can't insert it
 	if err != nil {
@@ -456,5 +460,10 @@ func (app *application) scraperInsertScraperError(errorDetail *data.ScraperError
 		})
 		return err
 	}
+	// log the detail
+	app.logger.PrintInfo("Logging scraper error", map[string]string{
+		"Feed": name,
+		"URL":  url,
+	})
 	return nil
 }

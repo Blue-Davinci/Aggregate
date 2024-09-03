@@ -67,40 +67,47 @@ Some of the features include:
      you may have `{comment:write}` and `{comment:read}`, if a moderator bans a user, their `commen:write` permission maybe removed, and thus the users
      replies and comments will not be reflected.
 
-3. **Panic, Shutdown, and Recovery**: 
+3. **Scraper:**
+    - A custom RSS scraper designed to scrape all supported rss feed types including Atom feeds
+    - Uses custom retryable client, as well as flags to allow customizations including timeouts and retries.
+
+4. **Sanitization:**
+    - Sanitizes all relevanct rss fields from the scraped links. It offers both strict sanitization as well as a 'gentle' one that doesn't strip every HTML.
+
+5. **Panic, Shutdown, and Recovery**: 
    - The API supports shutdown and panic recoveries, including wait times and graceful shutdown procedures which support background routines and cron jobs.
 
-4. **CORS Management**: 
+6. **CORS Management**: 
    - Support for CORS management, including setting authorized/permitted URLs, methods, and more.
 
-5. **Metrics**: 
+7. **Metrics**: 
    - The API supports metrics, allowing authorized users to view items such as the number of goroutines, connection pools, performance parameters, and many others.
 
-6. **Mailer Support**: 
+8. **Mailer Support**: 
    - The API supports email sending and template development. All you need to do is hook up your `smtp` settings as shown in the `flags` section.
 
-7. **Rate Limiter**: 
+9. **Rate Limiter**: 
    - The API allows you to set limitations on the rates of user requests, with flags you can set using the listed entries in the `flags` section.
 
-8. **Custom Login and Authentication**: 
+10. **Custom Login and Authentication**: 
    - The API uses a custom authentication integration, not OAuth or JWT, but rather a hybrid of bearer tokens and an API key for better security.
 
-9. **Filtering, Sorting, and Pagination Support**: 
+11. **Filtering, Sorting, and Pagination Support**: 
    - Most of the routes and handlers allow the usage of filters as well as pagination.
 
-10. **Custom JSON Logger**: 
+12. **Custom JSON Logger**: 
    - The API uses a custom structured JSON logger with support for stack traces and customizations depending on the type of info being outputted.
 
-11. **Fully Functional Scraper**: 
+13. **Fully Functional Scraper**: 
    - The API uses its own scraper designed to acquire all flagged aggregated feeds and has multiple flags such as client timeouts, feed types, scraping rates, retry rates, etc., all designed to be customizable as well as fast.
 
-12. **Payment Client Support**: 
+14. **Payment Client Support**: 
     - The API provides custom clients for integration with the payment gateway.
 
-13. **Customization & Flexibility**:
+15. **Customization & Flexibility**:
     - The API provides a myriad of flags that a user can use to adjust and manipulate the API to their own needs. From setting your own rate limits, to how frequently the cron jobs run and happen, to the timeouts to be considered during a scrape job, to how many units to scrape per x time, the API gives you all the power you need to make it yours.
 
-14. **Front-End Support and Flexibility**: 
+16. **Front-End Support and Flexibility**: 
     - The API provides provision for users to integrate various links and **EMAIL** templates to their own frontend locations. Whether it's password reset links to Payment redirections to Activation links etc, users can customize and integrate their frontend endpoints with this API.
 
 **In The Works:**
@@ -240,6 +247,7 @@ the available commands for a quick lookup.
 - **paystack-initialization-url [string]:** The Paystack Initialization URL for processing the initialization of a payment transaction
 - **paystack-secret [string]:** Paystack Secret Key. This can be configured above, see [payment configuration here](#payment)
 - **paystack-verification-url [string]:** Paystack Verification URL endpoint to process the payment verifications.
+- **sanitization-strict [bool]:** allows a user to specify the level of sanitization. Setting this as true will be equivalent to stripping all `HTML` and all their `attributes`. The default is false for a medium balance.
 
 Using `make run`, will run the API with a default connection string located 
 in `cmd\api\.env`. If you're using `powershell`, you need to load the values otherwise you will get
