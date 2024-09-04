@@ -593,7 +593,7 @@ func convertAtomfeedToRSSFeed(rssFeed *RSSFeed, feed *atom.Feed, sanitizer *blue
 			Description: sanitizer.Sanitize(entry.Summary),
 			Content:     sanitizer.Sanitize(entry.Content.Value),
 			PubDate:     sanitizer.Sanitize(entry.Published),
-			ImageURL:    sanitizer.Sanitize(imageURL),
+			ImageURL:    imageURL, // sanitizer.Sanitize(imageURL)
 		}
 	}
 }
@@ -646,7 +646,7 @@ func convertGofeedToRSSFeed(rssFeed *RSSFeed, feed *gofeed.Feed, sanitizer *blue
 			Description: sanitizer.Sanitize(item.Description),
 			Content:     sanitizer.Sanitize(item.Content),
 			PubDate:     sanitizer.Sanitize(item.Published),
-			ImageURL:    sanitizer.Sanitize(imageURL),
+			ImageURL:    imageURL, // sanitizer.Sanitize(imageURL)
 		}
 	}
 }

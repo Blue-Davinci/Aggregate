@@ -737,6 +737,9 @@ func (m AdminModel) AdminGetAllFeedsWithStatistics(name, feed_type, priority str
 	return adminFeeds, metadata, adminFeedStats, nil
 }
 
+// AdminUpdateFeed() updates a feed in the database.
+// This method takes in the feed ID and the updated feed details.
+// The method returns an error if the feed is not found or if there is an edit conflict.
 func (m AdminModel) AdminUpdateFeed(adminFeed *AdminFeed) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -769,5 +772,25 @@ func (m AdminModel) AdminUpdateFeed(adminFeed *AdminFeed) error {
 	adminFeed.Feed.Version = row.Version
 	adminFeed.Feed.UpdatedAt = row.UpdatedAt
 	// clean. No error,
+	return nil
+}
+
+// AdminDeleteFeedByID() deletes a feed by the ID provided
+func (m AdminModel) AdminDeleteFeedByID(feedID uuid.UUID) error {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// delete the feed
+	_, err := m.DB.AdminDeleteFeedByID(ctx, feedID)
+	// check for an error
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrRecordNotFound
+		default:
+			return err
+		}
+	}
+	// no issues, we return nil
 	return nil
 }

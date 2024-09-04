@@ -222,3 +222,8 @@ LIMIT $1 OFFSET $2;
 DELETE FROM announcements
 WHERE id = $1
 RETURNING id;
+
+-- name: AdminDeleteFeedByID :one
+DELETE FROM feeds
+WHERE id = $1
+RETURNING id;

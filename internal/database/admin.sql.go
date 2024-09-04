@@ -125,6 +125,18 @@ func (q *Queries) AdminDeleteAnnouncmentByID(ctx context.Context, id int32) (int
 	return id, err
 }
 
+const adminDeleteFeedByID = `-- name: AdminDeleteFeedByID :one
+DELETE FROM feeds
+WHERE id = $1
+RETURNING id
+`
+
+func (q *Queries) AdminDeleteFeedByID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, adminDeleteFeedByID, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
 const adminDeletePermission = `-- name: AdminDeletePermission :one
 DELETE FROM permissions
 WHERE id = $1

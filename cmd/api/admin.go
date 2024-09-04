@@ -909,3 +909,37 @@ func (app *application) adminUpdateFeed(w http.ResponseWriter, r *http.Request) 
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+// adminDeleteFeedByIDHandler() is the admin endpoint that allows the admin to delete a feed
+// Deleting a feed will result in all of the data including posts to be removed from the DB
+func (app *application) adminDeleteFeedByIDHandler(w http.ResponseWriter, r *http.Request) {
+	feedID, err := app.readIDParam(r, "feedID")
+	if err != nil || feedID == uuid.Nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	/// validate feed UUID
+	// do a quick validate for the UUID
+	_, isValid := data.ValidateUUID(feedID.String())
+	if !isValid {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// delete the feed
+	err = app.models.Admin.AdminDeleteFeedByID(feedID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// write the data back with a message on success
+	message := fmt.Sprintf("feed with ID %s deleted successfully", feedID)
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": message}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
