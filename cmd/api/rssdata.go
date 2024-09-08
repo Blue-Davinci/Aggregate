@@ -75,13 +75,19 @@ func (app *application) rssFeedScraper(feed database.Feed) {
 		if err != nil {
 			switch {
 			case err == data.ErrContextDeadline:
+				// create a context deadline status code
+				var deadlineStatusCode int32 = 504
+				// check if the rssFeeds.StatusCode != 0 and set the deadlineStatusCode to that
+				if rssFeeds.StatusCode != 0 {
+					deadlineStatusCode = rssFeeds.StatusCode
+				}
 				// create our error detail with a context errorType
 				errorDetail := data.ScraperErrorLog{
 					ErrorType:       data.FeedContextExceededErrorType,
 					Message:         err.Error(),
 					FeedID:          feed.ID,
 					OccurredAt:      time.Now().UTC(),
-					StatusCode:      rssFeeds.StatusCode,
+					StatusCode:      deadlineStatusCode,
 					RetryAttempts:   rssFeeds.RetryMax,
 					AdminNotified:   false,
 					Resolved:        false,

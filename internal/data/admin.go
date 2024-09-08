@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/blue-davinci/aggregate/internal/database"
+	"github.com/blue-davinci/aggregate/internal/validator"
 	"github.com/google/uuid"
 )
 
@@ -147,6 +148,17 @@ func UpdateAdminFeedFields(input *AdminFeedInput, adminFeed *AdminFeed) {
 	if input.Priority != nil {
 		adminFeed.Priority = *input.Priority
 	}
+}
+
+func ValidateAdminFeedFields(v *validator.Validator, feed *AdminFeed) {
+	v.Check(feed.Approval_Status != "", "approval_status", "must be provided")
+	// check if priority is 'approved', 'pending', 'rejected'
+	v.Check(feed.Approval_Status == "approved" || feed.Approval_Status == "pending" || feed.Approval_Status == "rejected", "approval_status", "must be either approved, pending or rejected")
+
+	v.Check(feed.Priority != "", "priority", "must be provided")
+	// check if priority is either high, normal or low only
+	v.Check(feed.Priority == "high" || feed.Priority == "normal" || feed.Priority == "low", "priority", "must be either high, normal or low")
+
 }
 
 // AdminGetAllUsers() returns all available users in the DB. This route supports a full text search for the user Name as well

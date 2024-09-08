@@ -892,6 +892,11 @@ func (app *application) adminUpdateFeed(w http.ResponseWriter, r *http.Request) 
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
+	// Chcek admin fields validation
+	if data.ValidateAdminFeedFields(v, adminFeed); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
 	// For this admin endpoint, we will use the userID of the FEED we obtain from the
 	err = app.models.Admin.AdminUpdateFeed(adminFeed)
 	if err != nil {
