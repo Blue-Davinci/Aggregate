@@ -38,9 +38,11 @@ FROM
     scraper_error_logs sel
 JOIN 
     feeds f ON sel.feed_id = f.id
+WHERE
+    sel.error_type = $1 OR $1=''
 ORDER BY 
     sel.occurrence_count DESC
-LIMIT $1 OFFSET $2;
+LIMIT $2 OFFSET $3;
 
 -- name: UpdateScraperErrorLog :one
 UPDATE scraper_error_logs
@@ -52,7 +54,11 @@ SET
 WHERE id = $4
 RETURNING id, admin_notified, resolved, resolution_notes, updated_at;
 
-
+-- name: GetErrorTypeSearchOptions :many
+SELECT 
+    DISTINCT error_type
+FROM
+    scraper_error_logs;
 
 -- name: DeleteScraperErrorLogByID :one
 DELETE FROM scraper_error_logs

@@ -95,14 +95,17 @@ FROM
     scraper_error_logs sel
 JOIN 
     feeds f ON sel.feed_id = f.id
+WHERE
+    sel.error_type = $1 OR $1=''
 ORDER BY 
     sel.occurrence_count DESC
-LIMIT $1 OFFSET $2
+LIMIT $2 OFFSET $3
 `
 
 type GetAllScraperErrorLogsParams struct {
-	Limit  int32
-	Offset int32
+	ErrorType string
+	Limit     int32
+	Offset    int32
 }
 
 type GetAllScraperErrorLogsRow struct {
@@ -127,7 +130,7 @@ type GetAllScraperErrorLogsRow struct {
 }
 
 func (q *Queries) GetAllScraperErrorLogs(ctx context.Context, arg GetAllScraperErrorLogsParams) ([]GetAllScraperErrorLogsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getAllScraperErrorLogs, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, getAllScraperErrorLogs, arg.ErrorType, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +161,36 @@ func (q *Queries) GetAllScraperErrorLogs(ctx context.Context, arg GetAllScraperE
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getErrorTypeSearchOptions = `-- name: GetErrorTypeSearchOptions :many
+SELECT 
+    DISTINCT error_type
+FROM
+    scraper_error_logs
+`
+
+func (q *Queries) GetErrorTypeSearchOptions(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getErrorTypeSearchOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var error_type string
+		if err := rows.Scan(&error_type); err != nil {
+			return nil, err
+		}
+		items = append(items, error_type)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

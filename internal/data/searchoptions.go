@@ -19,13 +19,17 @@ type SearchOptionFeedDetail struct {
 }
 
 type SearchOptionFeedType struct {
-	Feed_ID   int    `json:"feed_id"`
+	Feed_ID   int32  `json:"feed_id"`
 	Feed_Type string `json:"feed_type"`
 }
 
 type SearchOptionFeedPriority struct {
-	Feed_ID       int    `json:"feed_id"`
+	Feed_ID       int32  `json:"feed_id"`
 	Feed_Priority string `json:"feed_priority"`
+}
+type SearchOptionErrorType struct {
+	Error_ID   int32  `json:"error_id"`
+	Error_Type string `json:"error_type"`
 }
 
 // The ID's will be used for interopolations for the frontend
@@ -63,7 +67,7 @@ func (m SearchOptionsDataModel) GetFeedTypeSearchOptions() ([]*SearchOptionFeedT
 	feedTypes := []*SearchOptionFeedType{}
 	for i, feed_type := range feeds {
 		var feedType SearchOptionFeedType
-		feedType.Feed_ID = i + 1
+		feedType.Feed_ID = int32(i + 1)
 		feedType.Feed_Type = feed_type
 		feedTypes = append(feedTypes, &feedType)
 	}
@@ -83,9 +87,29 @@ func (m SearchOptionsDataModel) GetFeedPrioritySearchOptions() ([]*SearchOptionF
 	feedPriorities := []*SearchOptionFeedPriority{}
 	for i, feed_priority := range feeds {
 		var feedPriority SearchOptionFeedPriority
-		feedPriority.Feed_ID = i + 1
+		feedPriority.Feed_ID = int32(i + 1)
 		feedPriority.Feed_Priority = feed_priority
 		feedPriorities = append(feedPriorities, &feedPriority)
 	}
 	return feedPriorities, nil
+}
+
+// GetErrorTypeSearchOptions() returns all available distinct error types
+// we have in the database. For the ID's, we will just use the indexes
+func (m SearchOptionsDataModel) GetErrorTypeSearchOptions() ([]*SearchOptionErrorType, error) {
+	// create our timeout context. All of them will just be 5 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	errors, err := m.DB.GetErrorTypeSearchOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	errorTypes := []*SearchOptionErrorType{}
+	for i, error_type := range errors {
+		var errorType SearchOptionErrorType
+		errorType.Error_ID = int32(i + 1)
+		errorType.Error_Type = error_type
+		errorTypes = append(errorTypes, &errorType)
+	}
+	return errorTypes, nil
 }

@@ -216,5 +216,7 @@ func (app *application) adminRoutes() chi.Router {
 	adminRoutes.Get("/errors", app.adminGetAllScraperErrorLogs)
 	adminRoutes.Delete("/errors/{errorID}", app.adminDeleteScraperErrorLogByID)
 	adminRoutes.Patch("/errors/{errorID}", app.adminUpdateScraperErrorLog)
+	// search options
+	adminRoutes.Get("/search-options/error-types", app.getGetErrorTypeSearchOptionsHandler)
 	return adminRoutes
 }

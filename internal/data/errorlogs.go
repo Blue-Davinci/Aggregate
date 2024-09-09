@@ -53,7 +53,6 @@ func ValidateScraperErrorLog(v *validator.Validator, errorDetails *ScraperErrorL
 	v.Check(errorDetails.ResolutionNotes != "", "resolution_notes", "must be provided")
 	return nil
 }
-
 func (m ErrorLogsDataModel) InsertScraperErrorLog(errorDetails *ScraperErrorLog) error {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -122,14 +121,15 @@ func (m ErrorLogsDataModel) GetScraperErrorLogByID(errorID int32) (*ScraperError
 
 // GetAllScraperErrorLogs() retrieves all the error logs from the db
 // based on the filters provided
-func (m ErrorLogsDataModel) GetAllScraperErrorLogs(filters Filters) (*[]ScraperErrorLog, Metadata, error) {
+func (m ErrorLogsDataModel) GetAllScraperErrorLogs(errorType string, filters Filters) (*[]ScraperErrorLog, Metadata, error) {
 	// create our timeout context. All of them will just be 5 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	errorLogs, err := m.DB.GetAllScraperErrorLogs(ctx, database.GetAllScraperErrorLogsParams{
-		Limit:  int32(filters.limit()),
-		Offset: int32(filters.offset()),
+		ErrorType: errorType,
+		Limit:     int32(filters.limit()),
+		Offset:    int32(filters.offset()),
 	})
 	if err != nil {
 		return nil, Metadata{}, err
